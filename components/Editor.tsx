@@ -6,8 +6,13 @@ import { RightPanel } from "./RightPanel";
 import { Stage } from "./Stage";
 import { Timeline } from "./Timeline";
 import { Toolbar, type DownloadOptions } from "./Toolbar";
+import { ExportModal, type VideoRequest } from "./ExportModal";
 import { ToastStack } from "./ui";
-import { downloadJson, downloadPng, downloadSvg, recordVideo, targetSize } from "@/lib/exporter";
+import { downloadJson, downloadPng, downloadSvg, targetSize } from "@/lib/exporter";
+import {
+  detectMp4Support, encodeMp4, encodeWebm, renderTestFrame,
+  type Mp4Support, type VideoProgress,
+} from "@/lib/videoExport";
 import { createInitialProject } from "@/lib/initialProject";
 import { importProject, projectToJson, SAMPLE_JSON } from "@/lib/jsonImport";
 import {
@@ -17,7 +22,7 @@ import {
 import type {
   Background, CanvasSize, Layer, PanelId, Project, RightMode, Scene, ShapeKind, ToastKind, ToastMessage,
 } from "@/lib/types";
-import { slugify } from "@/lib/utils";
+import { downloadBlob, slugify } from "@/lib/utils";
 
 export default function Editor() {
   const [project, setProjectState] = useState<Project>(createInitialProject);
@@ -40,12 +45,16 @@ export default function Editor() {
   const [mobileLeft, setMobileLeft] = useState(false);
   const [mobileRight, setMobileRight] = useState(false);
   const [historyCounts, setHistoryCounts] = useState({ past: 0, future: 0 });
+  const [videoRequest, setVideoRequest] = useState<VideoRequest | null>(null);
+  const [videoProgress, setVideoProgress] = useState<VideoProgress | null>(null);
+  const [videoPreview, setVideoPreview] = useState<{ dataUrl: string; ok: boolean } | null>(null);
+  const [videoSupport, setVideoSupport] = useState<Mp4Support | null>(null);
 
   const past = useRef<Project[]>([]);
   const future = useRef<Project[]>([]);
   const lastCommit = useRef(0);
   const timeRef = useRef(0);
-  const sceneDurations = useRef<{ id: string; duration: number }[]>([]);
+  const abortRef = useRef<AbortController | null>(null);
 
   const activeScene = useMemo(
     () => project.scenes.find((s) => s.id === project.activeSceneId) ?? project.scenes[0],
@@ -57,15 +66,30 @@ export default function Editor() {
   );
   const activeDuration = activeScene?.duration ?? 5;
 
-  useEffect(() => {
-    sceneDurations.current = project.scenes.map((s) => ({ id: s.id, duration: s.duration }));
-  }, [project.scenes]);
-
   const toast = useCallback((text: string, kind: ToastKind = "success") => {
     const id = Date.now() + Math.random();
     setToasts((list) => [...list.slice(-3), { id, text, kind }]);
     setTimeout(() => setToasts((list) => list.filter((t) => t.id !== id)), 2600);
   }, []);
+
+  const requestSource = videoRequest?.source;
+  const requestQuality = videoRequest?.options.quality;
+  const requestFps = videoRequest?.options.fps;
+  useEffect(() => {
+    if (!requestSource) return;
+    let alive = true;
+    const quality = requestQuality === "native" || !requestQuality ? "1080p" : requestQuality;
+    const { width, height } = targetSize(requestSource.size, quality);
+    void detectMp4Support(width, height, requestFps ?? 60)
+      .then((result) => { if (alive) setVideoSupport(result); })
+      .catch(() => { if (alive) setVideoSupport({ supported: false, codec: null, message: "MP4 support check failed." }); });
+    const previewW = 200;
+    const previewH = Math.max(1, Math.round((requestSource.size.height / requestSource.size.width) * previewW));
+    void renderTestFrame(requestSource, previewW, previewH)
+      .then((result) => { if (alive) setVideoPreview(result); })
+      .catch(() => { if (alive) setVideoPreview({ dataUrl: "", ok: false }); });
+    return () => { alive = false; };
+  }, [requestFps, requestQuality, requestSource]);
 
   const commit = useCallback((updater: (p: Project) => Project, record = true) => {
     const now = Date.now();
@@ -312,7 +336,7 @@ export default function Editor() {
     return () => window.removeEventListener("keydown", onKey);
   }, [deleteLayer, redo, selectedId, selectedLayer, togglePlay, undo, updateLayer]);
 
-  const runDownload = useCallback(async (kind: "png" | "svg" | "json" | "video", opts: DownloadOptions, override?: Project) => {
+  const runDownload = useCallback(async (kind: "png" | "svg" | "json", opts: DownloadOptions, override?: Project) => {
     const source = override ?? project;
     setBusy("Preparing...");
     try {
@@ -323,55 +347,84 @@ export default function Editor() {
       } else if (kind === "svg") {
         downloadSvg(source.name, source.size, opts.quality);
         toast("✅ Downloaded SVG");
-      } else if (kind === "json") {
+      } else {
         downloadJson(JSON.parse(projectToJson(source)), `${slugify(source.name)}.json`);
         toast("✅ Downloaded JSON");
-      } else {
-        const quality = source.fourK && opts.quality === "native" ? "4K" : opts.quality;
-        const { width, height } = targetSize(source.size, quality);
-        setExporting(true);
-        setPlaying(true);
-        timeRef.current = 0;
-        setTime(0);
-        const durations = source.scenes.map((s) => ({ id: s.id, duration: s.duration }));
-        sceneDurations.current = durations;
-        toast(`🎬 Recording ${opts.duration}s • ${width}×${height}`, "info");
-        await recordVideo({
-          duration: opts.duration,
-          fps: opts.fps,
-          width,
-          height,
-          name: source.name,
-          onProgress: (elapsed, duration) => setBusy(`Recording ${elapsed.toFixed(0)}s / ${duration}s`),
-          onTick: (ms) => {
-            timeRef.current = ms;
-            setTime(ms);
-            if (durations.length > 1) {
-              let acc = 0;
-              const seconds = ms / 1000;
-              for (const scene of durations) {
-                if (seconds < acc + scene.duration) {
-                  const totalBefore = durations.slice(0, durations.indexOf(scene)).reduce((sum, d) => sum + d.duration, 0);
-                  timeRef.current = Math.max(0, ms - totalBefore * 1000);
-                  if (source.activeSceneId !== scene.id) setProject((p) => ({ ...p, activeSceneId: scene.id }));
-                  break;
-                }
-                acc += scene.duration;
-              }
-            }
-          },
-        });
-        toast("✅ Downloaded Video");
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       toast(`❌ Download failed: ${message}`, "error");
     } finally {
       setBusy(null);
+    }
+  }, [project, toast]);
+
+  const openVideoExport = useCallback((format: "mp4" | "webm", opts: DownloadOptions, override?: Project) => {
+    setPlaying(false);
+    timeRef.current = 0;
+    setTime(0);
+    setVideoPreview(null);
+    setVideoSupport(null);
+    setVideoRequest({
+      format,
+      options: { ...opts, quality: opts.quality === "native" ? "1080p" : opts.quality },
+      source: override ?? projectRef.current,
+    });
+  }, []);
+
+  const startVideoExport = useCallback(async () => {
+    if (!videoRequest) return;
+    const { format, options, source } = videoRequest;
+    const quality = options.quality === "native" ? "1080p" : options.quality;
+    const { width, height } = targetSize(source.size, quality);
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setExporting(true);
+    setBusy("Rendering...");
+    setVideoProgress({
+      percent: 0,
+      frame: 0,
+      totalFrames: Math.max(1, Math.floor(options.fps * options.duration)),
+      stage: "Preparing frames",
+    });
+    let actualFormat: "mp4" | "webm" = format;
+    try {
+      if (format === "mp4") {
+        const support = await detectMp4Support(width, height, options.fps);
+        if (!support.supported) {
+          actualFormat = "webm";
+          toast("⚠️ Real MP4 unsupported here — downloading WebM fallback", "error");
+        }
+      }
+      const overrides = {
+        project: source,
+        width,
+        height,
+        fps: options.fps,
+        duration: options.duration,
+        signal: controller.signal,
+        onProgress: setVideoProgress,
+      };
+      const blob = actualFormat === "mp4" ? await encodeMp4(overrides) : await encodeWebm(overrides);
+      downloadBlob(blob, `mini-canva-${Date.now()}.${actualFormat}`);
+      toast(actualFormat === "mp4"
+        ? "✅ MP4 Ready - Check Downloads"
+        : "✅ WebM Ready - Check Downloads");
+      setVideoRequest(null);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        toast("⛔ Export cancelled", "info");
+      } else {
+        toast(`❌ Export failed: ${error instanceof Error ? error.message : "Unknown error"}`, "error");
+      }
+    } finally {
+      abortRef.current = null;
+      setVideoProgress(null);
       setExporting(false);
       setPlaying(false);
+      setBusy(null);
     }
-  }, [project, setProject, toast]);
+  }, [toast, videoRequest]);
 
   const generateFromJson = useCallback((withVideo: boolean) => {
     try {
@@ -383,12 +436,12 @@ export default function Editor() {
       timeRef.current = 0;
       toast(`✅ JSON Imported • ${imported.scenes.length} scenes`);
       if (withVideo) {
-        void runDownload("video", { quality: "native", duration: 5, fps: imported.fps }, imported);
+        openVideoExport("mp4", { quality: "1080p", duration: 5, fps: imported.fps }, imported);
       }
     } catch (error) {
       toast(`❌ ${error instanceof Error ? error.message : "Invalid JSON"}`, "error");
     }
-  }, [commit, jsonText, runDownload, toast]);
+  }, [commit, jsonText, openVideoExport, toast]);
 
   const handlePanel = useCallback((p: PanelId | null) => {
     setPanel(p);
@@ -405,7 +458,10 @@ export default function Editor() {
   }), [applyBackground, addCharacter, addFinance, addText, addImageFile, addSticker,
     selectScene, addScene, duplicateScene, deleteScene, jsonText, generateFromJson, loadSampleJson]);
   const handleBackgroundClick = useCallback(() => setRightMode("background"), []);
-  const handleDownload = useCallback((kind: "png" | "svg" | "json" | "video", opts: DownloadOptions) => { void runDownload(kind, opts); }, [runDownload]);
+  const handleDownload = useCallback((kind: "png" | "svg" | "json" | "mp4" | "webm", opts: DownloadOptions) => {
+    if (kind === "mp4" || kind === "webm") openVideoExport(kind, opts);
+    else void runDownload(kind, opts);
+  }, [openVideoExport, runDownload]);
   const timelineScenes = useMemo(() => project.scenes.map((s) => ({ id: s.id, name: s.name, duration: s.duration })), [project.scenes]);
   const handleDuration = useCallback((id: string, duration: number) => {
     commit((p) => ({ ...p, scenes: p.scenes.map((s) => (s.id === id ? { ...s, duration } : s)) }));
@@ -515,6 +571,23 @@ export default function Editor() {
           />
         </div>
       </div>
+      {videoRequest && (
+        <ExportModal
+          request={videoRequest}
+          progress={videoProgress}
+          preview={videoPreview}
+          support={videoSupport}
+          onQuality={(quality) => {
+            setVideoPreview(null);
+            setVideoSupport(null);
+            setVideoRequest((current) => current ? { ...current, options: { ...current.options, quality } } : current);
+          }}
+          onDuration={(duration) => setVideoRequest((current) => current ? { ...current, options: { ...current.options, duration } } : current)}
+          onClose={() => setVideoRequest(null)}
+          onStart={() => { void startVideoExport(); }}
+          onCancel={() => abortRef.current?.abort()}
+        />
+      )}
       <ToastStack toasts={toasts} />
     </main>
   );

@@ -57,11 +57,15 @@ function Editor() {
         past: 0,
         future: 0
     });
+    const [videoRequest, setVideoRequest] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
+    const [videoProgress, setVideoProgress] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
+    const [videoPreview, setVideoPreview] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
+    const [videoSupport, setVideoSupport] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
     const past = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useRef"])([]);
     const future = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useRef"])([]);
     const lastCommit = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useRef"])(0);
     const timeRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useRef"])(0);
-    const sceneDurations = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useRef"])([]);
+    const abortRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useRef"])(null);
     const activeScene = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useMemo"])(()=>project.scenes.find((s)=>s.id === project.activeSceneId) ?? project.scenes[0], [
         project
     ]);
@@ -70,14 +74,6 @@ function Editor() {
         selectedId
     ]);
     const activeDuration = activeScene?.duration ?? 5;
-    (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
-        sceneDurations.current = project.scenes.map((s)=>({
-                id: s.id,
-                duration: s.duration
-            }));
-    }, [
-        project.scenes
-    ]);
     const toast = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useCallback"])((text, kind = "success")=>{
         const id = Date.now() + Math.random();
         setToasts((list)=>[
@@ -541,7 +537,7 @@ function Editor() {
                     }));
                 sceneDurations.current = durations;
                 toast(`🎬 Recording ${opts.duration}s • ${width}×${height}`, "info");
-                await (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$exporter$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["recordVideo"])({
+                await recordVideo({
                     duration: opts.duration,
                     fps: opts.fps,
                     width,
@@ -728,7 +724,7 @@ function Editor() {
                                 children: "✦"
                             }, void 0, false, {
                                 fileName: "[project]/components/Editor.tsx",
-                                lineNumber: 433,
+                                lineNumber: 438,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
@@ -740,7 +736,7 @@ function Editor() {
                                         children: "/"
                                     }, void 0, false, {
                                         fileName: "[project]/components/Editor.tsx",
-                                        lineNumber: 434,
+                                        lineNumber: 439,
                                         columnNumber: 106
                                     }, this),
                                     " ",
@@ -749,13 +745,13 @@ function Editor() {
                                         children: "Animated Studio"
                                     }, void 0, false, {
                                         fileName: "[project]/components/Editor.tsx",
-                                        lineNumber: 434,
+                                        lineNumber: 439,
                                         columnNumber: 147
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/Editor.tsx",
-                                lineNumber: 434,
+                                lineNumber: 439,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -763,13 +759,13 @@ function Editor() {
                                 children: "Vector • 4K"
                             }, void 0, false, {
                                 fileName: "[project]/components/Editor.tsx",
-                                lineNumber: 435,
+                                lineNumber: 440,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/Editor.tsx",
-                        lineNumber: 432,
+                        lineNumber: 437,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -782,7 +778,7 @@ function Editor() {
                                 children: "Left"
                             }, void 0, false, {
                                 fileName: "[project]/components/Editor.tsx",
-                                lineNumber: 438,
+                                lineNumber: 443,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -792,19 +788,19 @@ function Editor() {
                                 children: "Right"
                             }, void 0, false, {
                                 fileName: "[project]/components/Editor.tsx",
-                                lineNumber: 439,
+                                lineNumber: 444,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/Editor.tsx",
-                        lineNumber: 437,
+                        lineNumber: 442,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/Editor.tsx",
-                lineNumber: 431,
+                lineNumber: 436,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -819,7 +815,7 @@ function Editor() {
                         actions: leftActions
                     }, void 0, false, {
                         fileName: "[project]/components/Editor.tsx",
-                        lineNumber: 444,
+                        lineNumber: 449,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
@@ -841,7 +837,7 @@ function Editor() {
                                 onDownload: handleDownload
                             }, void 0, false, {
                                 fileName: "[project]/components/Editor.tsx",
-                                lineNumber: 454,
+                                lineNumber: 459,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$Stage$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Stage"], {
@@ -858,7 +854,7 @@ function Editor() {
                                 onDuplicateLayer: duplicateLayer
                             }, void 0, false, {
                                 fileName: "[project]/components/Editor.tsx",
-                                lineNumber: 469,
+                                lineNumber: 474,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$Timeline$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Timeline"], {
@@ -876,13 +872,13 @@ function Editor() {
                                 onSeek: seek
                             }, void 0, false, {
                                 fileName: "[project]/components/Editor.tsx",
-                                lineNumber: 482,
+                                lineNumber: 487,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/Editor.tsx",
-                        lineNumber: 453,
+                        lineNumber: 458,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -905,31 +901,31 @@ function Editor() {
                             onCloseMobile: closeMobileRight
                         }, void 0, false, {
                             fileName: "[project]/components/Editor.tsx",
-                            lineNumber: 499,
+                            lineNumber: 504,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/components/Editor.tsx",
-                        lineNumber: 498,
+                        lineNumber: 503,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/Editor.tsx",
-                lineNumber: 443,
+                lineNumber: 448,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$ui$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ToastStack"], {
                 toasts: toasts
             }, void 0, false, {
                 fileName: "[project]/components/Editor.tsx",
-                lineNumber: 518,
+                lineNumber: 523,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/Editor.tsx",
-        lineNumber: 430,
+        lineNumber: 435,
         columnNumber: 5
     }, this);
 }
@@ -5068,8 +5064,6 @@ function ToolbarImpl({ size, zoom, playing, busy, canUndo, canRedo, onUndo, onRe
     const [customW, setCustomW] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(2000);
     const [customH, setCustomH] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(2000);
     const [quality, setQuality] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])("native");
-    const [duration, setDuration] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(5);
-    const [fps, setFps] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(60);
     const ref = (0, __TURBOPACK__imported__module__$5b$project$5d2f$components$2f$ui$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useOutside"])(()=>setOpen(null));
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         ref: ref,
@@ -5085,7 +5079,7 @@ function ToolbarImpl({ size, zoom, playing, busy, canUndo, canRedo, onUndo, onRe
                         className: canUndo ? "" : "opacity-30"
                     }, void 0, false, {
                         fileName: "[project]/components/Toolbar.tsx",
-                        lineNumber: 55,
+                        lineNumber: 53,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$ui$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["IconButton"], {
@@ -5095,14 +5089,14 @@ function ToolbarImpl({ size, zoom, playing, busy, canUndo, canRedo, onUndo, onRe
                         className: canRedo ? "" : "opacity-30"
                     }, void 0, false, {
                         fileName: "[project]/components/Toolbar.tsx",
-                        lineNumber: 56,
+                        lineNumber: 54,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                         className: "mx-1 h-6 w-px bg-line"
                     }, void 0, false, {
                         fileName: "[project]/components/Toolbar.tsx",
-                        lineNumber: 58,
+                        lineNumber: 56,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5119,7 +5113,7 @@ function ToolbarImpl({ size, zoom, playing, busy, canUndo, canRedo, onUndo, onRe
                                         className: "text-brand2"
                                     }, void 0, false, {
                                         fileName: "[project]/components/Toolbar.tsx",
-                                        lineNumber: 66,
+                                        lineNumber: 64,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -5127,7 +5121,7 @@ function ToolbarImpl({ size, zoom, playing, busy, canUndo, canRedo, onUndo, onRe
                                         children: size.name
                                     }, void 0, false, {
                                         fileName: "[project]/components/Toolbar.tsx",
-                                        lineNumber: 67,
+                                        lineNumber: 65,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -5135,7 +5129,7 @@ function ToolbarImpl({ size, zoom, playing, busy, canUndo, canRedo, onUndo, onRe
                                         children: size.short
                                     }, void 0, false, {
                                         fileName: "[project]/components/Toolbar.tsx",
-                                        lineNumber: 68,
+                                        lineNumber: 66,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$ui$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Icon"], {
@@ -5144,13 +5138,13 @@ function ToolbarImpl({ size, zoom, playing, busy, canUndo, canRedo, onUndo, onRe
                                         className: "text-zinc-500"
                                     }, void 0, false, {
                                         fileName: "[project]/components/Toolbar.tsx",
-                                        lineNumber: 69,
+                                        lineNumber: 67,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/Toolbar.tsx",
-                                lineNumber: 61,
+                                lineNumber: 59,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$ui$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Dropdown"], {
@@ -5162,7 +5156,7 @@ function ToolbarImpl({ size, zoom, playing, busy, canUndo, canRedo, onUndo, onRe
                                         children: "Canvas Size • कैनवास साइज़"
                                     }, void 0, false, {
                                         fileName: "[project]/components/Toolbar.tsx",
-                                        lineNumber: 72,
+                                        lineNumber: 70,
                                         columnNumber: 13
                                     }, this),
                                     __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$presets$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["CANVAS_SIZES"].slice(0, 9).map((preset)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -5180,12 +5174,12 @@ function ToolbarImpl({ size, zoom, playing, busy, canUndo, canRedo, onUndo, onRe
                                                         size: 15
                                                     }, void 0, false, {
                                                         fileName: "[project]/components/Toolbar.tsx",
-                                                        lineNumber: 83,
+                                                        lineNumber: 81,
                                                         columnNumber: 109
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/Toolbar.tsx",
-                                                    lineNumber: 83,
+                                                    lineNumber: 81,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -5196,7 +5190,7 @@ function ToolbarImpl({ size, zoom, playing, busy, canUndo, canRedo, onUndo, onRe
                                                             children: preset.name
                                                         }, void 0, false, {
                                                             fileName: "[project]/components/Toolbar.tsx",
-                                                            lineNumber: 85,
+                                                            lineNumber: 83,
                                                             columnNumber: 19
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -5210,13 +5204,13 @@ function ToolbarImpl({ size, zoom, playing, busy, canUndo, canRedo, onUndo, onRe
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/components/Toolbar.tsx",
-                                                            lineNumber: 86,
+                                                            lineNumber: 84,
                                                             columnNumber: 19
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/components/Toolbar.tsx",
-                                                    lineNumber: 84,
+                                                    lineNumber: 82,
                                                     columnNumber: 17
                                                 }, this),
                                                 size.id === preset.id && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$ui$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Icon"], {
@@ -5225,13 +5219,13 @@ function ToolbarImpl({ size, zoom, playing, busy, canUndo, canRedo, onUndo, onRe
                                                     className: "text-brand2"
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/Toolbar.tsx",
-                                                    lineNumber: 88,
+                                                    lineNumber: 86,
                                                     columnNumber: 43
                                                 }, this)
                                             ]
                                         }, preset.id, true, {
                                             fileName: "[project]/components/Toolbar.tsx",
-                                            lineNumber: 74,
+                                            lineNumber: 72,
                                             columnNumber: 15
                                         }, this)),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5242,7 +5236,7 @@ function ToolbarImpl({ size, zoom, playing, busy, canUndo, canRedo, onUndo, onRe
                                                 children: "🎞️ Custom Size • अपना साइज़"
                                             }, void 0, false, {
                                                 fileName: "[project]/components/Toolbar.tsx",
-                                                lineNumber: 92,
+                                                lineNumber: 90,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5256,7 +5250,7 @@ function ToolbarImpl({ size, zoom, playing, busy, canUndo, canRedo, onUndo, onRe
                                                                 children: "Width"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/components/Toolbar.tsx",
-                                                                lineNumber: 95,
+                                                                lineNumber: 93,
                                                                 columnNumber: 19
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -5268,13 +5262,13 @@ function ToolbarImpl({ size, zoom, playing, busy, canUndo, canRedo, onUndo, onRe
                                                                 className: "w-full rounded-md border border-line bg-[#111117] px-2 py-1.5 font-mono text-[11px] text-zinc-200 outline-none focus:border-brand"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/components/Toolbar.tsx",
-                                                                lineNumber: 96,
+                                                                lineNumber: 94,
                                                                 columnNumber: 19
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/components/Toolbar.tsx",
-                                                        lineNumber: 94,
+                                                        lineNumber: 92,
                                                         columnNumber: 17
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
@@ -5285,7 +5279,7 @@ function ToolbarImpl({ size, zoom, playing, busy, canUndo, canRedo, onUndo, onRe
                                                                 children: "Height"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/components/Toolbar.tsx",
-                                                                lineNumber: 99,
+                                                                lineNumber: 97,
                                                                 columnNumber: 19
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -5297,13 +5291,13 @@ function ToolbarImpl({ size, zoom, playing, busy, canUndo, canRedo, onUndo, onRe
                                                                 className: "w-full rounded-md border border-line bg-[#111117] px-2 py-1.5 font-mono text-[11px] text-zinc-200 outline-none focus:border-brand"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/components/Toolbar.tsx",
-                                                                lineNumber: 100,
+                                                                lineNumber: 98,
                                                                 columnNumber: 19
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/components/Toolbar.tsx",
-                                                        lineNumber: 98,
+                                                        lineNumber: 96,
                                                         columnNumber: 17
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$ui$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
@@ -5318,37 +5312,37 @@ function ToolbarImpl({ size, zoom, playing, busy, canUndo, canRedo, onUndo, onRe
                                                         children: "Apply"
                                                     }, void 0, false, {
                                                         fileName: "[project]/components/Toolbar.tsx",
-                                                        lineNumber: 102,
+                                                        lineNumber: 100,
                                                         columnNumber: 17
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/components/Toolbar.tsx",
-                                                lineNumber: 93,
+                                                lineNumber: 91,
                                                 columnNumber: 15
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/Toolbar.tsx",
-                                        lineNumber: 91,
+                                        lineNumber: 89,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/Toolbar.tsx",
-                                lineNumber: 71,
+                                lineNumber: 69,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/Toolbar.tsx",
-                        lineNumber: 60,
+                        lineNumber: 58,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/Toolbar.tsx",
-                lineNumber: 54,
+                lineNumber: 52,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5360,7 +5354,7 @@ function ToolbarImpl({ size, zoom, playing, busy, canUndo, canRedo, onUndo, onRe
                         onClick: ()=>onZoom(Math.max(25, zoom - 25))
                     }, void 0, false, {
                         fileName: "[project]/components/Toolbar.tsx",
-                        lineNumber: 118,
+                        lineNumber: 116,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -5374,7 +5368,7 @@ function ToolbarImpl({ size, zoom, playing, busy, canUndo, canRedo, onUndo, onRe
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/Toolbar.tsx",
-                        lineNumber: 119,
+                        lineNumber: 117,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$ui$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["IconButton"], {
@@ -5383,13 +5377,13 @@ function ToolbarImpl({ size, zoom, playing, busy, canUndo, canRedo, onUndo, onRe
                         onClick: ()=>onZoom(Math.min(300, zoom + 25))
                     }, void 0, false, {
                         fileName: "[project]/components/Toolbar.tsx",
-                        lineNumber: 120,
+                        lineNumber: 118,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/Toolbar.tsx",
-                lineNumber: 117,
+                lineNumber: 115,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5407,7 +5401,7 @@ function ToolbarImpl({ size, zoom, playing, busy, canUndo, canRedo, onUndo, onRe
                                 className: "h-7 w-7"
                             }, void 0, false, {
                                 fileName: "[project]/components/Toolbar.tsx",
-                                lineNumber: 125,
+                                lineNumber: 123,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$ui$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["IconButton"], {
@@ -5418,13 +5412,13 @@ function ToolbarImpl({ size, zoom, playing, busy, canUndo, canRedo, onUndo, onRe
                                 className: "h-7 w-7"
                             }, void 0, false, {
                                 fileName: "[project]/components/Toolbar.tsx",
-                                lineNumber: 126,
+                                lineNumber: 124,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/Toolbar.tsx",
-                        lineNumber: 124,
+                        lineNumber: 122,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5440,7 +5434,7 @@ function ToolbarImpl({ size, zoom, playing, busy, canUndo, canRedo, onUndo, onRe
                                         size: 14
                                     }, void 0, false, {
                                         fileName: "[project]/components/Toolbar.tsx",
-                                        lineNumber: 135,
+                                        lineNumber: 133,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -5448,7 +5442,7 @@ function ToolbarImpl({ size, zoom, playing, busy, canUndo, canRedo, onUndo, onRe
                                         children: busy ?? "Download"
                                     }, void 0, false, {
                                         fileName: "[project]/components/Toolbar.tsx",
-                                        lineNumber: 136,
+                                        lineNumber: 134,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$ui$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Icon"], {
@@ -5456,25 +5450,116 @@ function ToolbarImpl({ size, zoom, playing, busy, canUndo, canRedo, onUndo, onRe
                                         size: 12
                                     }, void 0, false, {
                                         fileName: "[project]/components/Toolbar.tsx",
-                                        lineNumber: 137,
+                                        lineNumber: 135,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/Toolbar.tsx",
-                                lineNumber: 130,
+                                lineNumber: 128,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$ui$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Dropdown"], {
                                 open: open === "download",
-                                className: "w-[330px]",
+                                className: "w-[350px]",
                                 children: [
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                         className: "px-2 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-widest text-zinc-500",
                                         children: "⬇️ Download • डाउनलोड"
                                     }, void 0, false, {
                                         fileName: "[project]/components/Toolbar.tsx",
+                                        lineNumber: 138,
+                                        columnNumber: 13
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                        type: "button",
+                                        disabled: Boolean(busy),
+                                        onClick: ()=>{
+                                            onDownload("mp4", {
+                                                quality,
+                                                duration: 5,
+                                                fps: 60
+                                            });
+                                            setOpen(null);
+                                        },
+                                        className: "mb-1.5 flex w-full items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2.5 text-left transition hover:border-emerald-400 disabled:opacity-40",
+                                        children: [
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$ui$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Icon"], {
+                                                name: "film",
+                                                size: 16,
+                                                className: "text-emerald-300"
+                                            }, void 0, false, {
+                                                fileName: "[project]/components/Toolbar.tsx",
+                                                lineNumber: 146,
+                                                columnNumber: 15
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                className: "flex-1",
+                                                children: [
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                        className: "block text-[11px] font-semibold text-emerald-100",
+                                                        children: "🎬 MP4 (Real MP4 - H.264) - RECOMMENDED"
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/components/Toolbar.tsx",
+                                                        lineNumber: 148,
+                                                        columnNumber: 17
+                                                    }, this),
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                        className: "block text-[9px] text-emerald-300/70",
+                                                        children: "Plays in WhatsApp, Gallery, YouTube ✅"
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/components/Toolbar.tsx",
+                                                        lineNumber: 149,
+                                                        columnNumber: 17
+                                                    }, this)
+                                                ]
+                                            }, void 0, true, {
+                                                fileName: "[project]/components/Toolbar.tsx",
+                                                lineNumber: 147,
+                                                columnNumber: 15
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$ui$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Icon"], {
+                                                name: "chevron",
+                                                size: 13,
+                                                className: "rotate-[-90deg] text-emerald-300"
+                                            }, void 0, false, {
+                                                fileName: "[project]/components/Toolbar.tsx",
+                                                lineNumber: 151,
+                                                columnNumber: 15
+                                            }, this)
+                                        ]
+                                    }, void 0, true, {
+                                        fileName: "[project]/components/Toolbar.tsx",
                                         lineNumber: 140,
+                                        columnNumber: 13
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                        type: "button",
+                                        disabled: Boolean(busy),
+                                        onClick: ()=>{
+                                            onDownload("webm", {
+                                                quality,
+                                                duration: 5,
+                                                fps: 60
+                                            });
+                                            setOpen(null);
+                                        },
+                                        className: "mb-2 flex w-full items-center gap-2 rounded-lg border border-line bg-panel2 px-3 py-2 text-[11px] text-zinc-200 transition hover:border-brand disabled:opacity-40",
+                                        children: [
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$ui$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Icon"], {
+                                                name: "film",
+                                                size: 14,
+                                                className: "text-brand2"
+                                            }, void 0, false, {
+                                                fileName: "[project]/components/Toolbar.tsx",
+                                                lineNumber: 160,
+                                                columnNumber: 15
+                                            }, this),
+                                            "🎬 WebM (Small Size - For Web)"
+                                        ]
+                                    }, void 0, true, {
+                                        fileName: "[project]/components/Toolbar.tsx",
+                                        lineNumber: 154,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5482,10 +5567,10 @@ function ToolbarImpl({ size, zoom, playing, busy, canUndo, canRedo, onUndo, onRe
                                         children: [
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                                 className: "mb-1.5 text-[9px] uppercase tracking-wide text-zinc-500",
-                                                children: "Quality • क्वैलिटी"
+                                                children: "Image quality • PNG / SVG"
                                             }, void 0, false, {
                                                 fileName: "[project]/components/Toolbar.tsx",
-                                                lineNumber: 143,
+                                                lineNumber: 164,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5502,113 +5587,22 @@ function ToolbarImpl({ size, zoom, playing, busy, canUndo, canRedo, onUndo, onRe
                                                         children: q === "native" ? "Source" : q
                                                     }, q, false, {
                                                         fileName: "[project]/components/Toolbar.tsx",
-                                                        lineNumber: 146,
+                                                        lineNumber: 167,
                                                         columnNumber: 19
                                                     }, this))
                                             }, void 0, false, {
                                                 fileName: "[project]/components/Toolbar.tsx",
-                                                lineNumber: 144,
+                                                lineNumber: 165,
                                                 columnNumber: 15
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/Toolbar.tsx",
-                                        lineNumber: 142,
+                                        lineNumber: 163,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                        className: "mb-2 grid grid-cols-2 gap-2",
-                                        children: [
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                className: "rounded-lg border border-line bg-panel2 p-2",
-                                                children: [
-                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                        className: "mb-1.5 text-[9px] uppercase tracking-wide text-zinc-500",
-                                                        children: "Video length"
-                                                    }, void 0, false, {
-                                                        fileName: "[project]/components/Toolbar.tsx",
-                                                        lineNumber: 153,
-                                                        columnNumber: 17
-                                                    }, this),
-                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                        className: "grid grid-cols-4 gap-1",
-                                                        children: [
-                                                            5,
-                                                            10,
-                                                            15,
-                                                            30
-                                                        ].map((d)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                                                                type: "button",
-                                                                onClick: ()=>setDuration(d),
-                                                                className: `rounded py-1 text-[10px] ${duration === d ? "bg-brand text-white" : "bg-[#111117] text-zinc-400"}`,
-                                                                children: [
-                                                                    d,
-                                                                    "s"
-                                                                ]
-                                                            }, d, true, {
-                                                                fileName: "[project]/components/Toolbar.tsx",
-                                                                lineNumber: 156,
-                                                                columnNumber: 21
-                                                            }, this))
-                                                    }, void 0, false, {
-                                                        fileName: "[project]/components/Toolbar.tsx",
-                                                        lineNumber: 154,
-                                                        columnNumber: 17
-                                                    }, this)
-                                                ]
-                                            }, void 0, true, {
-                                                fileName: "[project]/components/Toolbar.tsx",
-                                                lineNumber: 152,
-                                                columnNumber: 15
-                                            }, this),
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                className: "rounded-lg border border-line bg-panel2 p-2",
-                                                children: [
-                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                        className: "mb-1.5 text-[9px] uppercase tracking-wide text-zinc-500",
-                                                        children: "Frame rate"
-                                                    }, void 0, false, {
-                                                        fileName: "[project]/components/Toolbar.tsx",
-                                                        lineNumber: 161,
-                                                        columnNumber: 17
-                                                    }, this),
-                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                        className: "grid grid-cols-2 gap-1",
-                                                        children: [
-                                                            30,
-                                                            60
-                                                        ].map((f)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                                                                type: "button",
-                                                                onClick: ()=>setFps(f),
-                                                                className: `rounded py-1 text-[10px] ${fps === f ? "bg-brand text-white" : "bg-[#111117] text-zinc-400"}`,
-                                                                children: [
-                                                                    f,
-                                                                    " fps"
-                                                                ]
-                                                            }, f, true, {
-                                                                fileName: "[project]/components/Toolbar.tsx",
-                                                                lineNumber: 164,
-                                                                columnNumber: 21
-                                                            }, this))
-                                                    }, void 0, false, {
-                                                        fileName: "[project]/components/Toolbar.tsx",
-                                                        lineNumber: 162,
-                                                        columnNumber: 17
-                                                    }, this)
-                                                ]
-                                            }, void 0, true, {
-                                                fileName: "[project]/components/Toolbar.tsx",
-                                                lineNumber: 160,
-                                                columnNumber: 15
-                                            }, this)
-                                        ]
-                                    }, void 0, true, {
-                                        fileName: "[project]/components/Toolbar.tsx",
-                                        lineNumber: 151,
-                                        columnNumber: 13
-                                    }, this),
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                        className: "grid grid-cols-2 gap-1.5",
+                                        className: "grid grid-cols-3 gap-1.5",
                                         children: [
                                             [
                                                 "png",
@@ -5624,11 +5618,6 @@ function ToolbarImpl({ size, zoom, playing, busy, canUndo, canRedo, onUndo, onRe
                                                 "json",
                                                 "📄 JSON",
                                                 "file"
-                                            ],
-                                            [
-                                                "video",
-                                                "🎬 Video",
-                                                "film"
                                             ]
                                         ].map(([kind, label, icon])=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                                                 type: "button",
@@ -5636,12 +5625,12 @@ function ToolbarImpl({ size, zoom, playing, busy, canUndo, canRedo, onUndo, onRe
                                                 onClick: ()=>{
                                                     onDownload(kind, {
                                                         quality,
-                                                        duration,
-                                                        fps
+                                                        duration: 5,
+                                                        fps: 60
                                                     });
                                                     setOpen(null);
                                                 },
-                                                className: "flex items-center gap-2 rounded-lg border border-line bg-panel2 px-2.5 py-2 text-[11px] text-zinc-200 transition hover:border-brand disabled:opacity-40",
+                                                className: "flex items-center justify-center gap-1.5 rounded-lg border border-line bg-panel2 px-2 py-2 text-[11px] text-zinc-200 transition hover:border-brand disabled:opacity-40",
                                                 children: [
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$ui$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Icon"], {
                                                         name: icon,
@@ -5649,43 +5638,43 @@ function ToolbarImpl({ size, zoom, playing, busy, canUndo, canRedo, onUndo, onRe
                                                         className: "text-brand2"
                                                     }, void 0, false, {
                                                         fileName: "[project]/components/Toolbar.tsx",
-                                                        lineNumber: 187,
+                                                        lineNumber: 185,
                                                         columnNumber: 19
                                                     }, this),
                                                     label
                                                 ]
                                             }, kind, true, {
                                                 fileName: "[project]/components/Toolbar.tsx",
-                                                lineNumber: 177,
+                                                lineNumber: 178,
                                                 columnNumber: 17
                                             }, this))
                                     }, void 0, false, {
                                         fileName: "[project]/components/Toolbar.tsx",
-                                        lineNumber: 170,
+                                        lineNumber: 172,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/Toolbar.tsx",
-                                lineNumber: 139,
+                                lineNumber: 137,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/Toolbar.tsx",
-                        lineNumber: 129,
+                        lineNumber: 127,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/Toolbar.tsx",
-                lineNumber: 123,
+                lineNumber: 121,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/Toolbar.tsx",
-        lineNumber: 53,
+        lineNumber: 51,
         columnNumber: 5
     }, this);
 }

@@ -39,14 +39,12 @@ function ToolbarImpl({
   onZoom: (zoom: number) => void;
   onPlayToggle: () => void;
   onRestart: () => void;
-  onDownload: (kind: "png" | "svg" | "json" | "video", options: DownloadOptions) => void;
+  onDownload: (kind: "png" | "svg" | "json" | "mp4" | "webm", options: DownloadOptions) => void;
 }) {
   const [open, setOpen] = useState<"size" | "download" | null>(null);
   const [customW, setCustomW] = useState(2000);
   const [customH, setCustomH] = useState(2000);
   const [quality, setQuality] = useState<ExportQuality>("native");
-  const [duration, setDuration] = useState(5);
-  const [fps, setFps] = useState(60);
   const ref = useOutside<HTMLDivElement>(() => setOpen(null));
 
   return (
@@ -136,11 +134,34 @@ function ToolbarImpl({
             <span className="hidden sm:inline">{busy ?? "Download"}</span>
             <Icon name="chevron" size={12} />
           </Button>
-          <Dropdown open={open === "download"} className="w-[330px]">
+          <Dropdown open={open === "download"} className="w-[350px]">
             <p className="px-2 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-widest text-zinc-500">⬇️ Download • डाउनलोड</p>
 
+            <button
+              type="button"
+              disabled={Boolean(busy)}
+              onClick={() => { onDownload("mp4", { quality, duration: 5, fps: 60 }); setOpen(null); }}
+              className="mb-1.5 flex w-full items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2.5 text-left transition hover:border-emerald-400 disabled:opacity-40"
+            >
+              <Icon name="film" size={16} className="text-emerald-300" />
+              <span className="flex-1">
+                <span className="block text-[11px] font-semibold text-emerald-100">🎬 MP4 (Real MP4 - H.264) - RECOMMENDED</span>
+                <span className="block text-[9px] text-emerald-300/70">Plays in WhatsApp, Gallery, YouTube ✅</span>
+              </span>
+              <Icon name="chevron" size={13} className="rotate-[-90deg] text-emerald-300" />
+            </button>
+
+            <button
+              type="button"
+              disabled={Boolean(busy)}
+              onClick={() => { onDownload("webm", { quality, duration: 5, fps: 60 }); setOpen(null); }}
+              className="mb-2 flex w-full items-center gap-2 rounded-lg border border-line bg-panel2 px-3 py-2 text-[11px] text-zinc-200 transition hover:border-brand disabled:opacity-40"
+            >
+              <Icon name="film" size={14} className="text-brand2" />🎬 WebM (Small Size - For Web)
+            </button>
+
             <div className="mb-2 rounded-lg border border-line bg-panel2 p-2">
-              <p className="mb-1.5 text-[9px] uppercase tracking-wide text-zinc-500">Quality • क्वैलिटी</p>
+              <p className="mb-1.5 text-[9px] uppercase tracking-wide text-zinc-500">Image quality • PNG / SVG</p>
               <div className="grid grid-cols-4 gap-1">
                 {(["native", "720p", "1080p", "4K"] as ExportQuality[]).map((q) => (
                   <button key={q} type="button" onClick={() => setQuality(q)} className={`rounded-md py-1.5 text-[10px] transition ${quality === q ? "bg-brand text-white" : "bg-[#111117] text-zinc-400 hover:text-white"}`}>{q === "native" ? "Source" : q}</button>
@@ -148,41 +169,18 @@ function ToolbarImpl({
               </div>
             </div>
 
-            <div className="mb-2 grid grid-cols-2 gap-2">
-              <div className="rounded-lg border border-line bg-panel2 p-2">
-                <p className="mb-1.5 text-[9px] uppercase tracking-wide text-zinc-500">Video length</p>
-                <div className="grid grid-cols-4 gap-1">
-                  {[5, 10, 15, 30].map((d) => (
-                    <button key={d} type="button" onClick={() => setDuration(d)} className={`rounded py-1 text-[10px] ${duration === d ? "bg-brand text-white" : "bg-[#111117] text-zinc-400"}`}>{d}s</button>
-                  ))}
-                </div>
-              </div>
-              <div className="rounded-lg border border-line bg-panel2 p-2">
-                <p className="mb-1.5 text-[9px] uppercase tracking-wide text-zinc-500">Frame rate</p>
-                <div className="grid grid-cols-2 gap-1">
-                  {[30, 60].map((f) => (
-                    <button key={f} type="button" onClick={() => setFps(f)} className={`rounded py-1 text-[10px] ${fps === f ? "bg-brand text-white" : "bg-[#111117] text-zinc-400"}`}>{f} fps</button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-1.5">
+            <div className="grid grid-cols-3 gap-1.5">
               {([
                 ["png", "🖼️ PNG", "image"],
                 ["svg", "🎨 SVG", "sparkle"],
                 ["json", "📄 JSON", "file"],
-                ["video", "🎬 Video", "film"],
               ] as const).map(([kind, label, icon]) => (
                 <button
                   key={kind}
                   type="button"
                   disabled={Boolean(busy)}
-                  onClick={() => {
-                    onDownload(kind, { quality, duration, fps });
-                    setOpen(null);
-                  }}
-                  className="flex items-center gap-2 rounded-lg border border-line bg-panel2 px-2.5 py-2 text-[11px] text-zinc-200 transition hover:border-brand disabled:opacity-40"
+                  onClick={() => { onDownload(kind, { quality, duration: 5, fps: 60 }); setOpen(null); }}
+                  className="flex items-center justify-center gap-1.5 rounded-lg border border-line bg-panel2 px-2 py-2 text-[11px] text-zinc-200 transition hover:border-brand disabled:opacity-40"
                 >
                   <Icon name={icon} size={14} className="text-brand2" />{label}
                 </button>

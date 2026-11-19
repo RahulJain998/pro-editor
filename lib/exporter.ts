@@ -158,5 +158,5 @@ export async function recordVideo(options: RecordOptions): Promise<void> {
   stream.getTracks().forEach((track) => track.stop());
   const blob = new Blob(chunks, { type: mimeType });
   if (blob.size === 0) throw new Error("Recorded video was empty");
-  downloadBlob(blob, `${slugify(name)}-${duration}s.mp4`);
+  downloadBlob(blob, `${slugify(name)}-${duration}s.webm`);
 }
