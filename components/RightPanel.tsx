@@ -1,9 +1,12 @@
 "use client";
 
 import { memo, useState } from "react";
-import type { ChangeEvent } from "react";
+import type { ChangeEvent, CSSProperties } from "react";
 import { CANVAS_SIZES, GRADIENTS } from "@/lib/presets";
-import type { AnimationName, Background, Layer, Project, RightMode, ShapeKind, TextLayer } from "@/lib/types";
+import { ENTRANCE_ANIMATIONS, EXIT_ANIMATIONS, normalizeTextAnim } from "@/lib/textAnimation";
+import type {
+  AnimationName, Background, Layer, Project, RightMode, ShapeKind, TextAnimName, TextAnimationConfig, TextLayer,
+} from "@/lib/types";
 import {
   Button, ColorField, ColorGrid, FileInput, Icon, NumberField, PillTabs, Section,
   SelectField, Slider, TextField, Toggle,
@@ -22,6 +25,32 @@ const ANIMATIONS: { value: AnimationName; label: string }[] = [
   { value: "blink", label: "👁️ Blink" },
 ];
 
+const TEXT_ANIMATIONS: { value: TextAnimName; label: string }[] = [
+  { value: "popIn", label: "⬆️ Pop-In" },
+  { value: "typewriter", label: "⌨️ Typewriter" },
+  { value: "slideLeft", label: "⬅️ Slide Left" },
+  { value: "slideRight", label: "➡️ Slide Right" },
+  { value: "slideDown", label: "⬇️ Slide Down" },
+  { value: "zoomIn", label: "🔍 Zoom In" },
+  { value: "fadeIn", label: "✨ Fade In" },
+  { value: "bounce", label: "💥 Bounce" },
+  { value: "rainbow", label: "🌈 Rainbow" },
+  { value: "shake", label: "📳 Shake" },
+  { value: "fireGlow", label: "🔥 Fire Glow" },
+  { value: "highlight", label: "📢 Highlight" },
+  { value: "letterPop", label: "🔤 Letter Pop" },
+  { value: "wave", label: "↔️ Wave" },
+  { value: "kinetic", label: "🎯 Kinetic" },
+];
+
+const ANIM_CLASS: Record<string, string> = {
+  popIn: "ta-popIn", typewriter: "ta-typewriter", slideLeft: "ta-slideLeft",
+  slideRight: "ta-slideRight", slideDown: "ta-slideDown", zoomIn: "ta-zoomIn",
+  fadeIn: "ta-fadeIn", bounce: "ta-bounce", rainbow: "ta-rainbow", shake: "ta-shake",
+  fireGlow: "ta-fireGlow", highlight: "ta-highlight", letterPop: "ta-letterPop",
+  wave: "ta-wave", kinetic: "ta-kinetic", fadeOut: "ta-fadeOut",
+};
+
 export interface RightPanelProps {
   mode: RightMode;
   layer: Layer | null;
@@ -38,6 +67,7 @@ export interface RightPanelProps {
   onDeleteLayer: () => void;
   onDuplicateLayer: () => void;
   onCloseMobile: () => void;
+  onPreviewAnimation: () => void;
 }
 
 function RightPanelImpl(props: RightPanelProps) {
@@ -301,7 +331,7 @@ function BackgroundControlsInner({
   );
 }
 
-function LayerControls({ layer, onLayer, onDeleteLayer, onDuplicateLayer }: RightPanelProps & { layer: Layer }) {
+function LayerControls({ layer, onLayer, onDeleteLayer, onDuplicateLayer, onPreviewAnimation }: RightPanelProps & { layer: Layer }) {
   const patch = (p: Partial<Layer>) => onLayer(p);
   return (
     <>
@@ -320,7 +350,7 @@ function LayerControls({ layer, onLayer, onDeleteLayer, onDuplicateLayer }: Righ
         </div>
       </Section>
 
-      {layer.kind === "text" && <TextControls layer={layer} patch={patch} />}
+      {layer.kind === "text" && <TextControls layer={layer} patch={patch} onPreview={onPreviewAnimation} />}
       {layer.kind === "character" && (
         <Section title="Character" hint="Hand-designed SVG">
           <ColorField label="Skin Color" value={layer.skin} onChange={(skin) => patch({ skin })} />
@@ -372,7 +402,25 @@ function LayerControls({ layer, onLayer, onDeleteLayer, onDuplicateLayer }: Righ
   );
 }
 
-function TextControls({ layer, patch }: { layer: TextLayer; patch: (p: Partial<Layer>) => void }) {
+function TextControls({ layer, patch, onPreview }: { layer: TextLayer; patch: (p: Partial<Layer>) => void; onPreview: () => void }) {
+  const [previewNonce, setPreviewNonce] = useState(0);
+  const cfg = normalizeTextAnim(layer.textAnim);
+  const setAnim = (next: Partial<TextAnimationConfig>) => patch({ textAnim: { ...cfg, ...next } });
+  const animName: TextAnimName = cfg.animation === "none" ? (cfg.secondary ?? "popIn") : cfg.animation;
+  const previewStyle = {
+    "--ta-duration": `${cfg.duration}s`,
+    "--ta-delay": `${cfg.delay}s`,
+    "--ta-loop": cfg.loop ? "infinite" : "1",
+  } as CSSProperties;
+  const previewText = layer.text.replace(/\n/g, " ").slice(0, 26) || "Apna Text";
+  const previewLetters = ["letterPop", "wave", "kinetic"].includes(animName)
+    ? Array.from(previewText).map((char, i) => (
+        <span key={`${i}-${char}`} style={{ ["--ta-stagger" as string]: `${i * 0.06}s` }}>
+          {char === " " ? "\u00A0" : char}
+        </span>
+      ))
+    : null;
+
   return (
     <>
       <Section title="Text Content" hint="Hindi + English likho">
@@ -416,6 +464,92 @@ function TextControls({ layer, patch }: { layer: TextLayer; patch: (p: Partial<L
         {layer.glow.enabled && <ColorField label="Glow Color" value={layer.glow.color} onChange={(color) => patch({ glow: { ...layer.glow, color } })} />}
         <Toggle label="Background Pill" checked={layer.pill.enabled} onChange={(enabled) => patch({ pill: { ...layer.pill, enabled } })} />
         {layer.pill.enabled && <ColorField label="Pill Color" value={layer.pill.color} onChange={(color) => patch({ pill: { ...layer.pill, color } })} />}
+      </Section>
+
+      <Section title="✨ Text Animation" hint="Video me kaise aayega?">
+        <p className="mb-2 text-[10px] font-semibold text-brand2">Text Animation - Video me kaise aayega?</p>
+        <div className="grid grid-cols-2 gap-1.5">
+          {TEXT_ANIMATIONS.map((item) => (
+            <button
+              key={item.value}
+              type="button"
+              onClick={() => { setAnim({ animation: item.value }); onPreview(); }}
+              className={`rounded-md border px-1.5 py-2 text-[10px] font-medium transition ${cfg.animation === item.value ? "border-brand bg-brand/20 text-white" : "border-line bg-panel2 text-zinc-400 hover:border-brand/50 hover:text-white"}`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-3 rounded-lg border border-line bg-[#111117] p-2.5">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-[9px] font-semibold uppercase tracking-widest text-zinc-500">Live Preview</span>
+            <span className="font-mono text-[9px] text-brand2">{animName} • {cfg.duration}s</span>
+          </div>
+          <div className="flex h-12 items-center justify-center overflow-hidden rounded-md bg-[#0b0b10] px-2 text-center text-[13px] font-bold text-white">
+            <span
+              key={previewNonce}
+              className={`ta-preview ${ANIM_CLASS[animName] ?? "ta-popIn"} ${["letterPop", "wave", "kinetic"].includes(animName) ? `ta-${animName}` : ""}`}
+              style={previewStyle}
+            >
+              {previewLetters ?? previewText}
+            </span>
+          </div>
+        </div>
+
+        <div className="mt-3 grid grid-cols-[1fr_auto] items-end gap-2">
+          <SelectField
+            label="Animation"
+            value={cfg.animation}
+            options={[{ value: "none" as TextAnimName, label: "None" }, ...TEXT_ANIMATIONS]}
+            onChange={(animation) => { setAnim({ animation }); onPreview(); }}
+          />
+          <Button
+            className="mb-2 h-[38px] px-2"
+            onClick={() => {
+              setPreviewNonce((n) => n + 1);
+              onPreview();
+            }}
+          >
+            ▶️ Preview Animation
+          </Button>
+        </div>
+
+        <Slider label="Delay" sub="kab shuru ho" value={cfg.delay} min={0} max={3} step={0.1} suffix="s" onChange={(delay) => setAnim({ delay })} />
+        <Slider label="Duration" sub="kitni der" value={cfg.duration} min={0.5} max={3} step={0.1} suffix="s" onChange={(duration) => setAnim({ duration })} />
+        <Toggle label="Loop" hint="Ek baar ya baar baar" checked={cfg.loop} onChange={(loop) => setAnim({ loop })} />
+
+        <div className="grid grid-cols-2 gap-2">
+          <SelectField
+            label="Entrance"
+            value={cfg.animation}
+            options={ENTRANCE_ANIMATIONS.map((a) => ({ value: a, label: TEXT_ANIMATIONS.find((t) => t.value === a)?.label ?? "None" }))}
+            onChange={(animation) => { setAnim({ animation }); onPreview(); }}
+          />
+          <SelectField
+            label="Exit"
+            value={cfg.exit}
+            options={EXIT_ANIMATIONS.map((a) => ({ value: a, label: a === "fadeOut" ? "✨ Fade Out" : TEXT_ANIMATIONS.find((t) => t.value === a)?.label ?? "None" }))}
+            onChange={(exit) => setAnim({ exit })}
+          />
+        </div>
+
+        <div className="mt-1 grid grid-cols-3 gap-1.5">
+          {([
+            { label: "🔥 Hook Text", config: { animation: "popIn" as TextAnimName, secondary: "shake" as TextAnimName, exit: "fadeOut" as TextAnimName } },
+            { label: "💰 Money Text", config: { animation: "popIn" as TextAnimName, secondary: "rainbow" as TextAnimName, exit: "fadeOut" as TextAnimName } },
+            { label: "😢 Sad Text", config: { animation: "fadeIn" as TextAnimName, secondary: "slideDown" as TextAnimName, exit: "fadeOut" as TextAnimName } },
+          ]).map((preset) => (
+            <button
+              key={preset.label}
+              type="button"
+              onClick={() => { setAnim(preset.config); onPreview(); }}
+              className="rounded-md border border-brand/30 bg-brand/10 px-1 py-2 text-[9px] font-medium text-brand2 transition hover:border-brand hover:text-white"
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
       </Section>
     </>
   );

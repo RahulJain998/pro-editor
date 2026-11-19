@@ -1,6 +1,7 @@
 import { CANVAS_SIZES, makeCharacterLayer, makeFinanceLayer, makeTextLayer, uid } from "./presets";
 import { defaultBackground } from "./presets";
-import type { Background, CanvasSize, Layer, Project, Scene } from "./types";
+import type { Background, CanvasSize, Layer, Project, Scene, TextLayer } from "./types";
+import { isTextAnimName, normalizeTextAnim } from "./textAnimation";
 
 export const SAMPLE_JSON = `{
   "name": "FD Story",
@@ -29,7 +30,7 @@ export const SAMPLE_JSON = `{
   ]
 }`;
 
-function makeSize(w: number, h: number): CanvasSize {
+export function makeSize(w: number, h: number): CanvasSize {
   const known = CANVAS_SIZES.find((s) => s.width === w && s.height === h);
   if (known) return { ...known };
   const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
@@ -45,7 +46,7 @@ function makeSize(w: number, h: number): CanvasSize {
   };
 }
 
-function backgroundFrom(input: Record<string, unknown>): Background {
+export function backgroundFrom(input: Record<string, unknown>): Background {
   const bg = structuredClone(defaultBackground);
   if (!input || typeof input !== "object") return bg;
   const type = typeof input.type === "string" ? input.type : "solid";
@@ -68,6 +69,10 @@ function backgroundFrom(input: Record<string, unknown>): Background {
     if (typeof p.kind === "string") bg.pattern.kind = p.kind as Background["pattern"]["kind"];
     if (typeof p.color === "string") bg.pattern.color = p.color;
     if (typeof p.accent === "string") bg.pattern.accent = p.accent;
+    if (typeof p.size === "number") bg.pattern.size = p.size;
+    if (typeof p.gap === "number") bg.pattern.gap = p.gap;
+    if (typeof p.speed === "number") bg.pattern.speed = p.speed;
+    if (typeof p.count === "number") bg.pattern.count = p.count;
   }
   return bg;
 }
@@ -90,20 +95,39 @@ function layerFrom(input: Record<string, unknown>): Layer | null {
   };
   if (type === "text") {
     const layer = makeTextLayer("body", typeof input.text === "string" ? input.text : "Text");
+    const textAnim = normalizeTextAnim({
+      animation: isTextAnimName(input.textAnimation)
+        ? input.textAnimation
+        : isTextAnimName(input.animation) ? input.animation : "none",
+      delay: typeof input.delay === "number" ? input.delay : 0,
+      duration: typeof input.duration === "number" ? input.duration : 1,
+      loop: Boolean(input.loop),
+      exit: isTextAnimName(input.exit) ? input.exit : "none",
+      secondary: isTextAnimName(input.secondary) ? input.secondary : undefined,
+    });
     return {
       ...layer,
       ...base,
       size: Number(input.size) || layer.size,
       color: typeof input.color === "string" ? input.color : layer.color,
       font: (typeof input.font === "string" ? input.font : layer.font) as typeof layer.font,
-      weight: Number(input.weight) || layer.weight,
-      animation: base.animation,
-    };
+      weight: Number(input.weight) || (input.bold === true ? 800 : layer.weight),
+      animation: textAnim.animation !== "none" ? "none" : base.animation,
+      textAnim,
+      border: input.border
+        ? { enabled: true, color: typeof input.border === "string" ? input.border : "#FFFFFF", width: 3 }
+        : layer.border,
+    } as TextLayer;
   }
   if (type === "character") {
     const def = { id: typeof input.charId === "string" ? input.charId : "ramesh", name: "Character", hint: "", skin: "#C68642", shirt: "#7C3AED", hair: "#18181B", accessory: "none", variant: 0 };
     const layer = makeCharacterLayer(def);
-    return { ...layer, ...base, charId: def.id, w: base.w === 60 ? 26 : base.w, h: base.h === 30 ? 45 : base.h };
+    return {
+      ...layer, ...base, charId: def.id,
+      w: base.w === 60 ? 26 : base.w, h: base.h === 30 ? 45 : base.h,
+      dialogue: typeof input.dialogue === "string" ? input.dialogue : undefined,
+      toX: typeof input.toX === "number" ? input.toX : undefined,
+    };
   }
   if (type === "finance") {
     const layer = makeFinanceLayer({ id: typeof input.objectId === "string" ? input.objectId : "fd-gold", label: "Object", hindi: "", kind: "fd", primary: "#FBBF24", secondary: "#B45309" });
@@ -112,8 +136,106 @@ function layerFrom(input: Record<string, unknown>): Layer | null {
   return null;
 }
 
+function record(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" ? value as Record<string, unknown> : {};
+}
+
+function normalizeScenesInput(parsed: Record<string, unknown>): Record<string, unknown> {
+  const rawScenes = Array.isArray(parsed.scenes) ? parsed.scenes : [];
+  const size = record(parsed.canvasSize ?? parsed.size);
+  const width = Math.min(6000, Math.max(200, Number(size.width) || 1080));
+  const height = Math.min(6000, Math.max(200, Number(size.height) || 1920));
+  const isScenesFormat = Boolean(parsed.projectName) || rawScenes.some((raw) => {
+    const s = record(raw);
+    return Array.isArray(s.texts) || Array.isArray(s.characters) || Array.isArray(s.objects) || "scene" in s;
+  });
+  if (!isScenesFormat) return parsed;
+
+  const scenes = rawScenes.map((raw, index) => {
+    const s = record(raw);
+    const bg = record(s.background);
+    let background: Record<string, unknown> = { type: "solid", color: typeof bg.color === "string" ? bg.color : "#111111" };
+    if (bg.gradient && typeof bg.gradient === "object") {
+      background = { type: "gradient", ...record(bg.gradient) };
+    } else if (bg.pattern && typeof bg.pattern === "object") {
+      background = { type: "pattern", color: typeof bg.color === "string" ? bg.color : "#111111", pattern: record(bg.pattern) };
+    } else if (bg.image && typeof bg.image === "object" && typeof record(bg.image).src === "string") {
+      background = { type: "image", ...record(bg.image) };
+    }
+
+    const texts = (Array.isArray(s.texts) ? s.texts : []).map((rawText) => {
+      const t = record(rawText);
+      const px = Number(t.size) || 32;
+      return {
+        type: "text",
+        name: typeof t.name === "string" ? t.name : "Text",
+        text: typeof t.text === "string" ? t.text : "Text",
+        x: Number(t.x) || 50,
+        y: Number(t.y) || 50,
+        size: (px / width) * 100,
+        color: typeof t.color === "string" ? t.color : "#FFFFFF",
+        bold: Boolean(t.bold),
+        font: typeof t.font === "string" ? t.font : "sans",
+        border: t.border,
+        animation: typeof t.textAnimation === "string" ? t.textAnimation : t.animation,
+        delay: t.delay,
+        duration: t.duration,
+        loop: t.loop,
+        exit: t.exit,
+        secondary: t.secondary,
+      };
+    });
+    const characters = (Array.isArray(s.characters) ? s.characters : []).map((rawChar) => {
+      const c = record(rawChar);
+      const px = Number(c.size) || 180;
+      return {
+        type: "character",
+        name: typeof c.name === "string" ? c.name : "Character",
+        charId: typeof c.name === "string" ? c.name.toLowerCase() : "ramesh",
+        x: Number(c.x) || 50,
+        y: Number(c.y) || 60,
+        w: (px / width) * 100,
+        h: (px * 1.8 / height) * 100,
+        animation: typeof c.action === "string" ? c.action : "wave",
+        toX: c.toX,
+        dialogue: c.dialogue,
+      };
+    });
+    const objects = (Array.isArray(s.objects) ? s.objects : []).map((rawObj) => {
+      const o = record(rawObj);
+      const px = Number(o.size) || 120;
+      const id = o.id;
+      return {
+        type: "finance",
+        name: typeof o.name === "string" ? o.name : "Object",
+        objectId: typeof id === "string" ? id : typeof id === "number" ? `object-${id}` : "fd-gold",
+        x: Number(o.x) || 50,
+        y: Number(o.y) || 50,
+        w: (px / width) * 100,
+        h: (px / height) * 100,
+        animation: typeof o.animation === "string" ? o.animation : "float",
+      };
+    });
+
+    return {
+      name: typeof s.name === "string" ? s.name : `Scene ${Number(s.scene) || index + 1}`,
+      duration: Number(s.duration) || 5,
+      background,
+      layers: [...texts, ...characters, ...objects],
+    };
+  });
+
+  return {
+    name: typeof parsed.projectName === "string" ? parsed.projectName : parsed.name,
+    size: parsed.canvasSize ?? parsed.size,
+    fps: parsed.fps ?? 60,
+    scenes,
+  };
+}
+
 export function importProject(json: string): Project {
-  const parsed = JSON.parse(json) as Record<string, unknown>;
+  const raw = JSON.parse(json) as Record<string, unknown>;
+  const parsed = normalizeScenesInput(raw);
   if (!parsed || !Array.isArray(parsed.scenes)) throw new Error("JSON must contain a scenes array");
   if (parsed.scenes.length === 0) throw new Error("At least one scene is required");
   const sizeInput = (parsed.size ?? {}) as Record<string, unknown>;
@@ -134,6 +256,7 @@ export function importProject(json: string): Project {
   });
   return {
     name: typeof parsed.name === "string" ? parsed.name : "Imported Project",
+    createdAt: typeof raw.createdAt === "string" ? raw.createdAt : undefined,
     size: makeSize(width, height),
     fps: 60,
     fourK: false,
@@ -145,6 +268,7 @@ export function importProject(json: string): Project {
 export function projectToJson(project: Project): string {
   return JSON.stringify({
     name: project.name,
+    createdAt: project.createdAt,
     size: { width: project.size.width, height: project.size.height, ratio: project.size.ratio },
     fps: project.fps,
     scenes: project.scenes.map((s) => ({

@@ -1,4 +1,4 @@
-import type { Background, CanvasSize, CharacterLayer, FinanceLayer, TextLayer } from "./types";
+import { DEFAULT_TEXT_ANIMATION, type Background, type CanvasSize, type CharacterLayer, type FinanceLayer, type TextLayer } from "./types";
 
 export const CANVAS_SIZES: CanvasSize[] = [
   { id: "reels", name: "Reels / Shorts", short: "9:16", width: 1080, height: 1920, ratio: "9:16", icon: "phone" },
@@ -228,6 +228,7 @@ export function makeTextLayer(presetId: string, text?: string): TextLayer {
     shadow: { enabled: false, color: "#000000", blur: 18, dx: 0, dy: 8 },
     glow: { enabled: false, color: "#A855F7", blur: 24 },
     pill: { enabled: p.id === "pill", color: "#7C3AED", opacity: 90, padding: 20 },
+    textAnim: { ...DEFAULT_TEXT_ANIMATION },
   };
 }
 

@@ -1,4 +1,4 @@
-import { CANVAS_SIZES, makeCharacterLayer, makeFinanceLayer, makeTextLayer, uid } from "./presets";
+import { CANVAS_SIZES, defaultBackground, makeCharacterLayer, makeFinanceLayer, makeTextLayer, uid } from "./presets";
 import type { Background, Project, Scene, TextLayer } from "./types";
 
 function bg(color: string, from: string, to: string): Background {
@@ -80,10 +80,43 @@ export function createInitialProject(): Project {
 
   return {
     name: "Mini Canva Pro - Animated Studio",
+    createdAt: new Date().toISOString().slice(0, 10),
     size: { ...c },
     fps: 60,
     fourK: true,
     scenes,
     activeSceneId: scenes[0].id,
+  };
+}
+
+export function createBlankProject(): Project {
+  const size = { ...CANVAS_SIZES[0] };
+  const background = structuredClone(defaultBackground);
+  background.type = "pattern";
+  background.color = "#111111";
+  background.pattern = {
+    ...background.pattern,
+    kind: "dots",
+    color: "#3F3F46",
+    accent: "#111111",
+    size: 8,
+    gap: 36,
+    speed: 25,
+  };
+  const scene: Scene = {
+    id: uid("scene"),
+    name: "Scene 1",
+    duration: 5,
+    background,
+    layers: [],
+  };
+  return {
+    name: "Untitled Project",
+    createdAt: new Date().toISOString().slice(0, 10),
+    size,
+    fps: 60,
+    fourK: true,
+    scenes: [scene],
+    activeSceneId: scene.id,
   };
 }

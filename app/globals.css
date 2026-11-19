@@ -93,3 +93,66 @@ input[type="color"]::-webkit-color-swatch {
   background-size: 12px 12px;
   background-position: 0 0, 0 6px, 6px -6px, -6px 0;
 }
+
+@keyframes popIn { 0%{transform:scale(0)} 70%{transform:scale(1.15)} 100%{transform:scale(1)} }
+@keyframes typewriter { from{width:0} to{width:100%} }
+@keyframes slideLeft { from{transform:translateX(-100%);opacity:0} to{transform:translateX(0);opacity:1} }
+@keyframes slideRight { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
+@keyframes slideDown { from{transform:translateY(-100%);opacity:0} to{transform:translateY(0);opacity:1} }
+@keyframes zoomIn { from{transform:scale(.2);opacity:0} to{transform:scale(1);opacity:1} }
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+@keyframes bounceA { 0%{transform:translateY(-100px)} 50%{transform:translateY(0)} 70%{transform:translateY(-20px)} 100%{transform:translateY(0)} }
+@keyframes rainbowA { 0%{color:#EF4444} 25%{color:#F59E0B} 50%{color:#10B981} 75%{color:#3B82F6} 100%{color:#EF4444} }
+@keyframes shakeA { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
+@keyframes fireGlowA { 0%{text-shadow:0 0 0 #F59E0B} 50%{text-shadow:0 0 14px #F59E0B,0 0 28px #EF4444} 100%{text-shadow:0 0 6px #F97316,0 0 18px #FBBF24} }
+@keyframes highlightA { 0%{background-size:0% 100%} 100%{background-size:100% 100%} }
+@keyframes letterPop { 0%{transform:scale(0) rotate(-10deg)} 100%{transform:scale(1) rotate(0)} }
+@keyframes waveA { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+@keyframes kineticA { 0%,100%{transform:scale(.8)} 50%{transform:scale(1.2)} }
+@keyframes fadeOut { from{opacity:1} to{opacity:0} }
+
+.ta-preview {
+  display: inline-block;
+  white-space: nowrap;
+  overflow: hidden;
+  animation-duration: var(--ta-duration, 1s);
+  animation-delay: var(--ta-delay, 0s);
+  animation-iteration-count: var(--ta-loop, 1);
+  animation-fill-mode: both;
+  animation-timing-function: ease-out;
+}
+.ta-popIn { animation-name: popIn; }
+.ta-typewriter { animation-name: typewriter; max-width: 100%; }
+.ta-slideLeft { animation-name: slideLeft; }
+.ta-slideRight { animation-name: slideRight; }
+.ta-slideDown { animation-name: slideDown; }
+.ta-zoomIn { animation-name: zoomIn; }
+.ta-fadeIn { animation-name: fadeIn; }
+.ta-bounce { animation-name: bounceA; }
+.ta-rainbow { animation-name: rainbowA; }
+.ta-shake { animation-name: shakeA; }
+.ta-fireGlow { animation-name: fireGlowA; }
+.ta-highlight {
+  animation-name: highlightA;
+  background-image: linear-gradient(#FDE047, #FDE047);
+  background-repeat: no-repeat;
+  background-position: center 65%;
+  background-size: 100% 100%;
+}
+.ta-letterPop { animation-name: letterPop; }
+.ta-wave { animation-name: waveA; }
+.ta-kinetic { animation-name: kineticA; }
+.ta-fadeOut { animation-name: fadeOut; }
+.ta-letterPop > span, .ta-wave > span, .ta-kinetic > span { display: inline-block; }
+.ta-letterPop > span {
+  animation: letterPop var(--ta-duration, 1s) ease-out both;
+  animation-delay: calc(var(--ta-delay, 0s) + var(--ta-stagger, 0s));
+}
+.ta-wave > span {
+  animation: waveA calc(var(--ta-duration, 1s) / 2) ease-in-out infinite alternate;
+  animation-delay: var(--ta-stagger, 0s);
+}
+.ta-kinetic > span {
+  animation: kineticA var(--ta-duration, 1s) ease-in-out both;
+  animation-delay: var(--ta-stagger, 0s);
+}

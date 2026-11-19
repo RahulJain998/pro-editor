@@ -1,4 +1,5 @@
 import { financeKind, findCharacter } from "./presets";
+import { normalizeTextAnim, textMotion } from "./textAnimation";
 import type {
   Background,
   CharacterLayer,
@@ -235,6 +236,9 @@ function PatternArt({ bg, W, H, time, prefix }: ArtProps & { bg: Background }) {
 
 function motionFor(layer: Layer, time: number, boxW: number, boxH: number) {
   const t = time * 0.001 * layer.animSpeed;
+  if (layer.kind === "text" && normalizeTextAnim(layer.textAnim).animation !== "none") {
+    return { dx: 0, dy: 0, rot: 0, scale: 1 };
+  }
   let dy = 0;
   const dx = 0;
   let rot = 0;
@@ -279,7 +283,8 @@ export function LayerArt({
   H,
   time,
   prefix,
-}: ArtProps & { layer: Layer }) {
+  sceneDuration = 5,
+}: ArtProps & { layer: Layer; sceneDuration?: number }) {
   const boxW = (layer.w / 100) * W;
   const boxH = (layer.h / 100) * H;
   const px = (layer.x / 100) * W;
@@ -292,7 +297,7 @@ export function LayerArt({
       opacity={layer.opacity / 100}
       style={{ pointerEvents: layer.visible ? "auto" : "none" }}
     >
-      {layer.kind === "text" && <TextArt layer={layer} W={W} boxW={boxW} prefix={prefix} />}
+      {layer.kind === "text" && <TextArt layer={layer} W={W} H={H} time={time} boxW={boxW} boxH={boxH} sceneDuration={sceneDuration} prefix={prefix} />}
       {layer.kind === "character" && <CharacterArt layer={layer} boxW={boxW} boxH={boxH} time={time} prefix={prefix} />}
       {layer.kind === "finance" && <FinanceArt layer={layer} boxW={boxW} boxH={boxH} time={time} prefix={prefix} />}
       {layer.kind === "image" && <ImageArt layer={layer} boxW={boxW} boxH={boxH} prefix={prefix} />}
@@ -301,9 +306,29 @@ export function LayerArt({
   );
 }
 
-function TextArt({ layer, W, boxW, prefix }: { layer: TextLayer; W: number; boxW: number; prefix: string }) {
+function TextArt({
+  layer,
+  W,
+  H,
+  time,
+  boxW,
+  boxH,
+  sceneDuration,
+  prefix,
+}: {
+  layer: TextLayer;
+  W: number;
+  H: number;
+  time: number;
+  boxW: number;
+  boxH: number;
+  sceneDuration: number;
+  prefix: string;
+}) {
   const size = (layer.size / 100) * W;
-  const lines = layer.text.split("\n");
+  const motion = textMotion(layer, time, W, H, boxW, boxH, sceneDuration);
+  const shown = motion.reveal < 1 ? layer.text.slice(0, Math.ceil(motion.reveal * layer.text.length)) : layer.text;
+  const lines = shown.split("\n");
   const longest = lines.reduce((a, b) => (b.length > a.length ? b : a), "");
   const approxWidth = longest.length * size * 0.56 + size * 0.4;
   const pillW = Math.min(boxW, approxWidth + (layer.pill.padding / 100) * W);
@@ -312,9 +337,75 @@ function TextArt({ layer, W, boxW, prefix }: { layer: TextLayer; W: number; boxW
   const anchor = layer.align === "left" ? "start" : layer.align === "right" ? "end" : "middle";
   const textX = layer.align === "left" ? -boxW / 2 : layer.align === "right" ? boxW / 2 : 0;
   const firstY = -totalH / 2 + size * 0.86;
+  const charSpacing = (layer.letterSpacing / 100) * W;
+  const fill = motion.color ?? (layer.gradient.enabled ? `url(#${prefix}-txtgrad)` : layer.color);
+  const glowBlur = layer.glow.enabled ? layer.glow.blur / 2 : 0;
+  const activeGlow = Math.max(glowBlur, motion.glow * W * 0.025);
+  const glyphColor = motion.color && layer.gradient.enabled ? motion.color : fill;
+  const letterStep = size * 0.56 + charSpacing;
+
+  const glyphProps = {
+    fill: glyphColor,
+    fontFamily: FONT_STACK[layer.font],
+    fontSize: size,
+    fontWeight: layer.weight,
+    fontStyle: (layer.italic ? "italic" : "normal") as "italic" | "normal",
+    stroke: layer.border.enabled ? layer.border.color : "none",
+    strokeWidth: layer.border.enabled ? (layer.border.width / 1000) * W : 0,
+    paintOrder: "stroke" as const,
+    style: { userSelect: "none" as const },
+  };
+
+  const letterNodes: React.ReactNode[] = [];
+  if (motion.letterMode !== "none") {
+    let lineIndex = 0;
+    let charInLine = 0;
+    Array.from(shown).forEach((char, index) => {
+      if (char === "\n") {
+        lineIndex += 1;
+        charInLine = 0;
+        return;
+      }
+      const line = lines[lineIndex] ?? "";
+      const lineLen = Array.from(line).length || 1;
+      const lineW = lineLen * letterStep;
+      const startX = layer.align === "left" ? -boxW / 2 : layer.align === "right" ? boxW / 2 - lineW : -lineW / 2;
+      const x = startX + charInLine * letterStep + letterStep / 2;
+      const y = firstY + lineIndex * lineStep;
+      let scale = 1;
+      let rot = 0;
+      let dy = 0;
+      if (motion.letterMode === "pop") {
+        const stagger = charInLine / lineLen;
+        const cp = clamp(motion.progress * 2.2 - stagger * 0.9, 0, 1);
+        scale = cp < 0.7 ? (cp / 0.7) * 1.15 : 1.15 - ((cp - 0.7) / 0.3) * 0.15;
+        rot = (1 - cp) * -10;
+      } else if (motion.letterMode === "wave") {
+        dy = -size * 0.18 * Math.sin(motion.progress * Math.PI * 4 + charInLine * 0.65);
+      } else {
+        const wordIndex = (line.slice(0, charInLine).match(/ /g) ?? []).length;
+        scale = 0.75 + 0.45 * (0.5 + 0.5 * Math.sin(motion.progress * Math.PI * 2 + wordIndex * 0.8));
+        dy = -size * 0.08 * Math.sin(motion.progress * Math.PI * 2 + wordIndex * 0.8);
+      }
+      const y2 = y + dy;
+      letterNodes.push(
+        <text
+          key={`${index}-${char}`}
+          x={x}
+          y={y2}
+          textAnchor="middle"
+          transform={`translate(${x} ${y2}) scale(${scale}) rotate(${rot}) translate(${-x} ${-y2})`}
+          {...glyphProps}
+        >
+          {char === " " ? "\u00A0" : char}
+        </text>,
+      );
+      charInLine += 1;
+    });
+  }
 
   return (
-    <g>
+    <g transform={`translate(${motion.dx} ${motion.dy}) scale(${motion.scale})`} opacity={motion.opacity}>
       <defs>
         <linearGradient id={`${prefix}-txtgrad`} x1="0%" y1="0%" x2="100%" y2="0%">
           <stop offset="0%" stopColor={layer.gradient.from} />
@@ -324,16 +415,28 @@ function TextArt({ layer, W, boxW, prefix }: { layer: TextLayer; W: number; boxW
           <feDropShadow dx={layer.shadow.dx} dy={layer.shadow.dy} stdDeviation={layer.shadow.blur / 2} floodColor={layer.shadow.color} floodOpacity="0.8" />
         </filter>
         <filter id={`${prefix}-txtglow`} x="-70%" y="-70%" width="240%" height="240%">
-          <feGaussianBlur stdDeviation={layer.glow.blur / 2} result="g" />
+          <feGaussianBlur stdDeviation={activeGlow} result="g" />
           <feMerge>
             <feMergeNode in="g" />
             <feMergeNode in="SourceGraphic" />
           </feMerge>
         </filter>
       </defs>
+      {motion.highlight > 0 && (
+        <rect
+          x={textX - pillW / 2}
+          y={-totalH / 2 - size * 0.18}
+          width={pillW}
+          height={totalH + size * 0.36}
+          rx={(totalH + size * 0.36) / 2}
+          fill="#FDE047"
+          opacity={0.85 * motion.highlight}
+          pointerEvents="none"
+        />
+      )}
       {layer.pill.enabled && (
         <rect
-          x={-pillW / 2}
+          x={textX - pillW / 2}
           y={-totalH / 2 - size * 0.18}
           width={pillW}
           height={totalH + size * 0.36}
@@ -342,34 +445,32 @@ function TextArt({ layer, W, boxW, prefix }: { layer: TextLayer; W: number; boxW
           opacity={layer.pill.opacity / 100}
         />
       )}
-      <text
-        x={textX}
-        y={firstY}
-        fill={layer.gradient.enabled ? `url(#${prefix}-txtgrad)` : layer.color}
-        fontFamily={FONT_STACK[layer.font]}
-        fontSize={size}
-        fontWeight={layer.weight}
-        fontStyle={layer.italic ? "italic" : "normal"}
-        textAnchor={anchor}
-        letterSpacing={(layer.letterSpacing / 100) * W}
-        stroke={layer.border.enabled ? layer.border.color : "none"}
-        strokeWidth={layer.border.enabled ? (layer.border.width / 1000) * W : 0}
-        paintOrder="stroke"
+      <g
         filter={
-          layer.glow.enabled
+          activeGlow > 0
             ? `url(#${prefix}-txtglow)`
             : layer.shadow.enabled
               ? `url(#${prefix}-txtshadow)`
               : undefined
         }
-        style={{ userSelect: "none" }}
       >
-        {lines.map((line, i) => (
-          <tspan key={i} x={textX} dy={i === 0 ? 0 : lineStep}>
-            {line}
-          </tspan>
-        ))}
-      </text>
+        {motion.letterMode !== "none" ? letterNodes : (
+          <text
+            x={textX}
+            y={firstY}
+            letterSpacing={charSpacing}
+            textAnchor={anchor}
+            {...glyphProps}
+            filter={undefined}
+          >
+            {lines.map((line, i) => (
+              <tspan key={i} x={textX} dy={i === 0 ? 0 : lineStep}>
+                {line}
+              </tspan>
+            ))}
+          </text>
+        )}
+      </g>
     </g>
   );
 }
@@ -884,7 +985,7 @@ export function SceneSvg({
       {scene.layers
         .filter((layer) => layer.visible)
         .map((layer, index) => (
-          <LayerArt key={layer.id} layer={layer} W={W} H={H} time={time} prefix={`${prefix}-l${index}`} />
+          <LayerArt key={layer.id} layer={layer} W={W} H={H} time={time} prefix={`${prefix}-l${index}`} sceneDuration={scene.duration} />
         ))}
       {children}
     </g>
@@ -903,7 +1004,8 @@ export function svgMarkup(scene: Scene, W: number, H: number, time: number, pref
       const px = (layer.x / 100) * W;
       const py = (layer.y / 100) * H;
       const m = motionFor(layer, time, boxW, boxH);
-      const common = `transform="translate(${px + m.dx} ${py + m.dy}) rotate(${layer.rot + m.rot}) scale(${m.scale})" opacity="${layer.opacity / 100}"`;
+      const tm = layer.kind === "text" ? textMotion(layer, time, W, H, boxW, boxH, scene.duration) : null;
+      const common = `transform="translate(${px + m.dx + (tm?.dx ?? 0)} ${py + m.dy + (tm?.dy ?? 0)}) rotate(${layer.rot + m.rot}) scale(${m.scale * (tm?.scale ?? 1)})" opacity="${(layer.opacity / 100) * (tm?.opacity ?? 1)}"`;
       if (layer.kind === "shape") {
         const fill = layer.fillGradient.enabled ? `url(#${prefix}-eg${index})` : layer.fill;
         const grad = layer.fillGradient.enabled

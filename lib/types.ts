@@ -10,6 +10,42 @@ export type AnimationName =
   | "wiggle"
   | "blink";
 
+export type TextAnimName =
+  | "none"
+  | "popIn"
+  | "typewriter"
+  | "slideLeft"
+  | "slideRight"
+  | "slideDown"
+  | "zoomIn"
+  | "fadeIn"
+  | "bounce"
+  | "rainbow"
+  | "shake"
+  | "fireGlow"
+  | "highlight"
+  | "letterPop"
+  | "wave"
+  | "kinetic"
+  | "fadeOut";
+
+export interface TextAnimationConfig {
+  animation: TextAnimName;
+  delay: number;
+  duration: number;
+  loop: boolean;
+  exit: TextAnimName;
+  secondary?: TextAnimName;
+}
+
+export const DEFAULT_TEXT_ANIMATION: TextAnimationConfig = {
+  animation: "none",
+  delay: 0,
+  duration: 1,
+  loop: false,
+  exit: "none",
+};
+
 export type LayerKind = "text" | "character" | "finance" | "image" | "shape";
 
 export interface LayerBase {
@@ -44,11 +80,14 @@ export interface TextLayer extends LayerBase {
   shadow: { enabled: boolean; color: string; blur: number; dx: number; dy: number };
   glow: { enabled: boolean; color: string; blur: number };
   pill: { enabled: boolean; color: string; opacity: number; padding: number };
+  textAnim: TextAnimationConfig;
 }
 
 export interface CharacterLayer extends LayerBase {
   kind: "character";
   charId: string;
+  dialogue?: string;
+  toX?: number;
   skin: string;
   shirt: string;
   hair: string;
@@ -144,6 +183,7 @@ export interface CanvasSize {
 
 export interface Project {
   name: string;
+  createdAt?: string;
   size: CanvasSize;
   fps: number;
   fourK: boolean;

@@ -7,14 +7,21 @@ import { Stage } from "./Stage";
 import { Timeline } from "./Timeline";
 import { Toolbar, type DownloadOptions } from "./Toolbar";
 import { ExportModal, type VideoRequest } from "./ExportModal";
-import { ToastStack } from "./ui";
+import { ToastStack, useOutside } from "./ui";
 import { downloadJson, downloadPng, downloadSvg, targetSize } from "@/lib/exporter";
 import {
   detectMp4Support, encodeMp4, encodeWebm, renderTestFrame,
   type Mp4Support, type VideoProgress,
 } from "@/lib/videoExport";
-import { createInitialProject } from "@/lib/initialProject";
+import { createBlankProject, createInitialProject } from "@/lib/initialProject";
 import { importProject, projectToJson, SAMPLE_JSON } from "@/lib/jsonImport";
+import {
+  copyScenesJsonFallback, downloadScenesJson, parseScenesJson, sceneJsonString, scenesJsonString,
+} from "@/lib/scenesJson";
+import {
+  clearAutosave, loadSavedProjects, readAutosave, removeSavedProject,
+  saveProject, writeAutosave, type SavedProject,
+} from "@/lib/projectStorage";
 import {
   CANVAS_SIZES, makeCharacterLayer, makeFinanceLayer, makeTextLayer, uid,
   type CharacterDef, type FinanceDef,
@@ -49,7 +56,13 @@ export default function Editor() {
   const [videoProgress, setVideoProgress] = useState<VideoProgress | null>(null);
   const [videoPreview, setVideoPreview] = useState<{ dataUrl: string; ok: boolean } | null>(null);
   const [videoSupport, setVideoSupport] = useState<Mp4Support | null>(null);
+  const [newProjectConfirm, setNewProjectConfirm] = useState(false);
+  const [projectsOpen, setProjectsOpen] = useState(false);
+  const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
+  const [recoveryProject, setRecoveryProject] = useState<Project | null>(null);
+  const [jsonError, setJsonError] = useState<string | null>(null);
 
+  const projectsRef = useOutside<HTMLDivElement>(() => setProjectsOpen(false));
   const past = useRef<Project[]>([]);
   const future = useRef<Project[]>([]);
   const lastCommit = useRef(0);
@@ -70,6 +83,19 @@ export default function Editor() {
     const id = Date.now() + Math.random();
     setToasts((list) => [...list.slice(-3), { id, text, kind }]);
     setTimeout(() => setToasts((list) => list.filter((t) => t.id !== id)), 2600);
+  }, []);
+
+  useEffect(() => {
+    const startup = window.setTimeout(() => {
+      setSavedProjects(loadSavedProjects());
+      const previous = readAutosave();
+      if (previous) setRecoveryProject(previous);
+    }, 0);
+    const timer = window.setInterval(() => writeAutosave(projectRef.current), 10_000);
+    return () => {
+      window.clearTimeout(startup);
+      window.clearInterval(timer);
+    };
   }, []);
 
   const requestSource = videoRequest?.source;
@@ -443,6 +469,123 @@ export default function Editor() {
     }
   }, [commit, jsonText, openVideoExport, toast]);
 
+  const beginNewProject = useCallback((saveFirst: boolean) => {
+    const current = projectRef.current;
+    if (saveFirst) {
+      const now = new Date();
+      const pad = (n: number) => String(n).padStart(2, "0");
+      const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}-${pad(now.getHours())}-${pad(now.getMinutes())}`;
+      downloadBlob(
+        new Blob([projectToJson(current)], { type: "application/json" }),
+        `project-backup-${stamp}.json`,
+      );
+      setSavedProjects(saveProject(current));
+    }
+    const blank = createBlankProject();
+    commit(() => blank, false);
+    past.current = [];
+    future.current = [];
+    setHistoryCounts({ past: 0, future: 0 });
+    setSelectedId(null);
+    setRightMode("background");
+    setPanel("backgrounds");
+    setPlaying(false);
+    setTime(0);
+    timeRef.current = 0;
+    setJsonError(null);
+    setNewProjectConfirm(false);
+    setProjectsOpen(false);
+    clearAutosave();
+    toast("✅ New Project Created");
+  }, [commit, toast]);
+
+  const openSavedProject = useCallback((entry: SavedProject) => {
+    commit(() => structuredClone(entry.project), false);
+    setSelectedId(null);
+    setRightMode("canvas");
+    setPlaying(false);
+    setTime(0);
+    timeRef.current = 0;
+    setProjectsOpen(false);
+    toast(`✅ Opened ${entry.name}`);
+  }, [commit, toast]);
+
+  const deleteSavedProject = useCallback((entry: SavedProject) => {
+    setSavedProjects(removeSavedProject(entry.id));
+    toast(`🗑️ Deleted ${entry.name}`, "info");
+  }, [toast]);
+
+  const handleRecover = useCallback((yes: boolean) => {
+    const source = recoveryProject;
+    if (yes && source) {
+      commit(() => source, false);
+      setSelectedId(null);
+      setRightMode("canvas");
+      toast("✅ Previous project recovered");
+    }
+    clearAutosave();
+    setRecoveryProject(null);
+  }, [commit, recoveryProject, toast]);
+
+  const previewTextAnimation = useCallback(() => {
+    setPlaying(false);
+    timeRef.current = 0;
+    setTime(0);
+    window.requestAnimationFrame(() => setPlaying(true));
+  }, []);
+
+  const handleDownloadScenes = useCallback(() => {
+    try {
+      downloadScenesJson(projectRef.current);
+      toast("✅ All Scenes JSON downloaded");
+    } catch (error) {
+      toast(`❌ Download failed: ${error instanceof Error ? error.message : "Unknown error"}`, "error");
+    }
+  }, [toast]);
+
+  const handleDownloadScene = useCallback((sceneId: string) => {
+    try {
+      const project = projectRef.current;
+      const index = project.scenes.findIndex((s) => s.id === sceneId);
+      if (index < 0) return;
+      downloadBlob(
+        new Blob([sceneJsonString(project, sceneId)], { type: "application/json" }),
+        `${slugify(project.name)}-scene-${index + 1}.json`,
+      );
+      toast(`✅ Scene ${index + 1} JSON downloaded`);
+    } catch (error) {
+      toast(`❌ Download failed: ${error instanceof Error ? error.message : "Unknown error"}`, "error");
+    }
+  }, [toast]);
+
+  const handleCopyScenes = useCallback(async () => {
+    try {
+      await copyScenesJsonFallback(scenesJsonString(projectRef.current));
+      setJsonError(null);
+      toast("📋 JSON copied to clipboard");
+    } catch (error) {
+      toast(`❌ Copy failed: ${error instanceof Error ? error.message : "Unknown error"}`, "error");
+    }
+  }, [toast]);
+
+  const handleUploadScenes = useCallback(async (file: File) => {
+    try {
+      const loaded = parseScenesJson(await file.text());
+      commit(() => loaded, false);
+      setSelectedId(null);
+      setRightMode("canvas");
+      setPlaying(false);
+      setTime(0);
+      timeRef.current = 0;
+      setJsonError(null);
+      toast(`✅ ${loaded.scenes.length} Scenes Loaded from JSON`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      setJsonError(`❌ JSON Error: ${message}`);
+      toast("❌ JSON Error", "error");
+    }
+  }, [commit, toast]);
+
   const handlePanel = useCallback((p: PanelId | null) => {
     setPanel(p);
     if (p === "backgrounds") setRightMode("background");
@@ -489,6 +632,52 @@ export default function Editor() {
           <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-brand to-brand2 text-[11px] text-white">✦</div>
           <h1 className="truncate text-[12px] font-semibold tracking-tight text-zinc-100">Mini Canva Pro <span className="text-zinc-600">/</span> <span className="text-brand2">Animated Studio</span></h1>
           <span className="hidden rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[8px] font-semibold uppercase tracking-wider text-emerald-300 sm:inline">Vector • 4K</span>
+          <div className="mx-1 hidden h-5 w-px bg-line sm:block" />
+          <button
+            type="button"
+            onClick={() => setNewProjectConfirm(true)}
+            className="flex h-7 items-center gap-1 rounded-md bg-gradient-to-r from-brand to-brand2 px-2.5 text-[10px] font-semibold text-white shadow-lg shadow-brand/25 transition hover:brightness-110"
+          >
+            ➕ New Project
+          </button>
+          <div className="relative" ref={projectsRef}>
+            <button
+              type="button"
+              onClick={() => setProjectsOpen((v) => !v)}
+              className="flex h-7 items-center gap-1 rounded-md border border-line bg-panel2 px-2 text-[10px] text-zinc-300 transition hover:border-brand"
+            >
+              📂 My Projects <span className="rounded bg-brand/20 px-1 font-mono text-[9px] text-brand2">{savedProjects.length}</span>
+            </button>
+            {projectsOpen && (
+              <div className="absolute left-0 top-[calc(100%+8px)] z-50 w-[320px] animate-fadeup rounded-xl border border-line bg-[#18181f] p-2 shadow-2xl shadow-black/60">
+                <p className="px-2 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-widest text-zinc-500">📂 Saved Projects • LocalStorage</p>
+                <div className="scroll-thin max-h-[280px] overflow-y-auto">
+                  {savedProjects.length === 0 ? (
+                    <p className="px-2 py-4 text-center text-[10px] text-zinc-500">Koi saved project nahi. “Save &amp; New” se save karo.</p>
+                  ) : savedProjects.map((entry) => (
+                    <div key={entry.id} className="mb-1 flex items-center gap-1 rounded-lg border border-line bg-panel2 px-2 py-1.5">
+                      <button
+                        type="button"
+                        onClick={() => openSavedProject(entry)}
+                        className="min-w-0 flex-1 text-left"
+                      >
+                        <span className="block truncate text-[11px] text-zinc-200">{entry.name}</span>
+                        <span className="block font-mono text-[9px] text-zinc-500">{entry.date}</span>
+                      </button>
+                      <button
+                        type="button"
+                        title="Delete project"
+                        onClick={() => deleteSavedProject(entry)}
+                        className="rounded p-1 text-zinc-500 hover:bg-rose-500/15 hover:text-rose-300"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-1 lg:hidden">
           <button type="button" onClick={() => setMobileLeft((v) => !v)} className="rounded-md border border-line bg-panel2 px-2 py-1 text-[10px] text-zinc-300">Left</button>
@@ -521,6 +710,7 @@ export default function Editor() {
             onPlayToggle={togglePlay}
             onRestart={restart}
             onDownload={handleDownload}
+            onDownloadScenesJson={handleDownloadScenes}
           />
           <Stage
             scene={activeScene}
@@ -548,6 +738,10 @@ export default function Editor() {
             onTogglePlay={togglePlay}
             onRestart={restart}
             onSeek={seek}
+            onDownloadScenesJson={handleDownloadScenes}
+            onUploadScenesJson={(file) => { void handleUploadScenes(file); }}
+            onCopyScenesJson={() => { void handleCopyScenes(); }}
+            onDownloadSceneJson={handleDownloadScene}
           />
         </section>
 
@@ -568,6 +762,7 @@ export default function Editor() {
             onDeleteLayer={deleteLayer}
             onDuplicateLayer={duplicateLayer}
             onCloseMobile={closeMobileRight}
+            onPreviewAnimation={previewTextAnimation}
           />
         </div>
       </div>
@@ -588,6 +783,40 @@ export default function Editor() {
           onCancel={() => abortRef.current?.abort()}
         />
       )}
+      {jsonError && (
+        <div className="fixed left-1/2 top-14 z-[90] flex max-w-[90vw] -translate-x-1/2 items-start gap-2 rounded-lg border border-rose-500/60 bg-rose-950/95 px-4 py-3 text-[11px] text-rose-100 shadow-2xl">
+          <span className="flex-1">{jsonError}</span>
+          <button type="button" onClick={() => setJsonError(null)} className="rounded px-1 text-rose-300 hover:bg-rose-500/20">✕</button>
+        </div>
+      )}
+
+      {newProjectConfirm && (
+        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onMouseDown={() => setNewProjectConfirm(false)}>
+          <div className="w-full max-w-[420px] rounded-2xl border border-line bg-[#18181f] p-5 shadow-2xl" onMouseDown={(e) => e.stopPropagation()}>
+            <h2 className="text-[15px] font-semibold text-zinc-100">⚠️ New Project banau?</h2>
+            <p className="mt-2 text-[12px] leading-relaxed text-zinc-400">Purana project delete ho jayega. Pehle save kar lo?</p>
+            <div className="mt-5 flex flex-wrap gap-2">
+              <button type="button" onClick={() => setNewProjectConfirm(false)} className="flex-1 rounded-lg border border-line bg-panel2 px-3 py-2 text-[11px] text-zinc-300 hover:border-zinc-500">❌ Cancel</button>
+              <button type="button" onClick={() => beginNewProject(true)} className="flex-1 rounded-lg bg-brand px-3 py-2 text-[11px] font-semibold text-white hover:brightness-110">💾 Save &amp; New</button>
+              <button type="button" onClick={() => beginNewProject(false)} className="flex-1 rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-[11px] font-semibold text-rose-200 hover:bg-rose-500/20">🆕 New Without Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {recoveryProject && (
+        <div className="fixed inset-0 z-[96] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-[420px] rounded-2xl border border-brand/40 bg-[#18181f] p-5 shadow-2xl">
+            <h2 className="text-[15px] font-semibold text-zinc-100">🔄 Pichla project recover karu?</h2>
+            <p className="mt-2 truncate text-[12px] text-zinc-400">{recoveryProject.name} • {recoveryProject.scenes.length} scenes</p>
+            <div className="mt-5 flex gap-2">
+              <button type="button" onClick={() => handleRecover(true)} className="flex-1 rounded-lg bg-brand px-3 py-2 text-[11px] font-semibold text-white hover:brightness-110">Yes</button>
+              <button type="button" onClick={() => handleRecover(false)} className="flex-1 rounded-lg border border-line bg-panel2 px-3 py-2 text-[11px] text-zinc-300 hover:border-zinc-500">No</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <ToastStack toasts={toasts} />
     </main>
   );

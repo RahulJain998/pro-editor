@@ -26,6 +26,7 @@ function ToolbarImpl({
   onPlayToggle,
   onRestart,
   onDownload,
+  onDownloadScenesJson,
 }: {
   size: CanvasSize;
   zoom: number;
@@ -40,6 +41,7 @@ function ToolbarImpl({
   onPlayToggle: () => void;
   onRestart: () => void;
   onDownload: (kind: "png" | "svg" | "json" | "mp4" | "webm", options: DownloadOptions) => void;
+  onDownloadScenesJson: () => void;
 }) {
   const [open, setOpen] = useState<"size" | "download" | null>(null);
   const [customW, setCustomW] = useState(2000);
@@ -168,6 +170,15 @@ function ToolbarImpl({
                 ))}
               </div>
             </div>
+
+            <button
+              type="button"
+              disabled={Boolean(busy)}
+              onClick={() => { onDownloadScenesJson(); setOpen(null); }}
+              className="mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-lg border border-brand/40 bg-brand/10 px-2 py-2 text-[11px] font-semibold text-brand2 transition hover:border-brand hover:text-white disabled:opacity-40"
+            >
+              <Icon name="file" size={14} />📄 Download All Scenes JSON
+            </button>
 
             <div className="grid grid-cols-3 gap-1.5">
               {([

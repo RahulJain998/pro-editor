@@ -149,7 +149,7 @@ export function Stage({
                     onPointerDown={(e) => beginDrag(e, layer, "move")}
                     style={{ cursor: layer.locked ? "default" : "move" }}
                   >
-                    <LayerArt layer={layer} W={W} H={H} time={time} prefix={`stage-${layer.id}`} />
+                    <LayerArt layer={layer} W={W} H={H} time={time} prefix={`stage-${layer.id}`} sceneDuration={scene.duration} />
                     <rect data-ui="true" x={-bw / 2} y={-bh / 2} width={bw} height={bh} fill="transparent" />
                   </g>
                 );
@@ -217,6 +217,14 @@ export function Stage({
             >
               <button type="button" title="Duplicate layer" onClick={onDuplicateLayer} className="rounded px-1.5 py-0.5 text-[10px] text-zinc-300 hover:bg-white/10">⧉</button>
               <button type="button" title="Delete layer" onClick={onDeleteLayer} className="rounded px-1.5 py-0.5 text-[10px] text-rose-300 hover:bg-rose-500/20">✕</button>
+            </div>
+          )}
+
+          {scene.layers.length === 0 && (
+            <div data-ui="true" className="pointer-events-none absolute inset-0 flex items-center justify-center p-6 text-center">
+              <div className="rounded-xl border border-dashed border-brand/40 bg-[#0d0d12]/70 px-5 py-3 text-[12px] font-medium leading-relaxed text-zinc-400 backdrop-blur-sm">
+                ➕ Left se Character / Text / Background add karo
+              </div>
             </div>
           )}
 
