@@ -1,14 +1,20 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useState } from "react";
+import { AnimalSvg, type AnimalDef } from "@/src/characters/Animals";
+import { HandCharacterSvg, isHandCharacter } from "@/src/characters/HandDesignedCharacters";
 import { LayerArt } from "@/lib/art";
-import { BACKGROUND_TILES, CHARACTERS, FINANCE_OBJECTS, TEXT_PRESETS, type CharacterDef, type FinanceDef } from "@/lib/presets";
+import {
+  ANIMALS, BACKGROUND_TILES, CHARACTERS, FINANCE_OBJECTS, TEXT_PRESETS,
+  type CharacterDef, type FinanceDef,
+} from "@/lib/presets";
 import type { Background, PanelId, Scene, ShapeKind } from "@/lib/types";
 import { Button, FileInput, Icon, IconButton } from "./ui";
 
 const ICONS: { id: PanelId; icon: string; label: string; hindi: string }[] = [
   { id: "backgrounds", icon: "backgrounds", label: "Backgrounds", hindi: "बैकग्राउंड" },
   { id: "characters", icon: "characters", label: "Characters", hindi: "किरदार" },
+  { id: "animals", icon: "animals", label: "🐾 Animals", hindi: "जानवर" },
   { id: "finance", icon: "finance", label: "Finance", hindi: "फाइनेंस" },
   { id: "text", icon: "text", label: "Text", hindi: "टेक्स्ट" },
   { id: "images", icon: "images", label: "Images", hindi: "तस्वीरें" },
@@ -19,6 +25,7 @@ const ICONS: { id: PanelId; icon: string; label: string; hindi: string }[] = [
 export interface LeftDockActions {
   applyBackground: (bg: Background, name: string) => void;
   addCharacter: (def: CharacterDef) => void;
+  addAnimal: (def: AnimalDef) => void;
   addFinance: (def: FinanceDef) => void;
   addText: (presetId: string) => void;
   addImageFile: (file: File) => void;
@@ -48,6 +55,8 @@ function LeftDockImpl({
   actions: LeftDockActions;
   mobileOpen: boolean;
 }) {
+  const [search, setSearch] = useState("");
+  const query = search.trim().toLowerCase();
   return (
     <div className="flex h-full shrink-0">
       <div className="z-40 flex w-[72px] shrink-0 flex-col items-center gap-1 border-r border-line bg-[#1A1A1A] py-2">
@@ -107,17 +116,63 @@ function LeftDockImpl({
 
           {panel === "characters" && (
             <div className="p-3">
-              <p className="mb-2 text-[10px] text-zinc-500">12 hand-drawn SVG characters • drag to move</p>
-              <div className="grid grid-cols-3 gap-2">
-                {CHARACTERS.map((def) => (
-                  <button key={def.id} type="button" onClick={() => actions.addCharacter(def)} className="group rounded-lg border border-line bg-panel2 p-1 transition hover:border-brand hover:bg-brand/10">
-                    <svg viewBox="0 0 100 100" className="mx-auto h-16 w-full">
-                      <CharacterThumb def={def} />
-                    </svg>
-                    <span className="block truncate text-[8px] text-zinc-400 group-hover:text-white">{def.name}</span>
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="🔍 Search police, girl, doctor..."
+                className="mb-2 w-full rounded-lg border border-line bg-[#0e0e13] px-2.5 py-2 text-[10px] text-zinc-200 outline-none focus:border-brand"
+              />
+              <p className="mb-2 text-[10px] text-zinc-500">{CHARACTERS.length} hand-designed SVG characters • click to add</p>
+              <div className="grid grid-cols-2 gap-2">
+                {CHARACTERS.filter((def) => `${def.name} ${def.hint} ${def.id}`.toLowerCase().includes(query)).map((def) => {
+                  const hand = isHandCharacter(def.id);
+                  return (
+                    <button key={def.id} type="button" title={`${def.name} • Character`} onClick={() => actions.addCharacter(def)} className="group flex h-[150px] flex-col rounded-lg border border-zinc-200 bg-white p-1 transition hover:border-brand hover:bg-brand/5">
+                      <div className="flex h-[100px] items-center justify-center overflow-hidden rounded bg-zinc-100">
+                        <svg viewBox={hand ? "0 0 200 240" : "0 0 100 100"} className="h-[100px] w-full">
+                          {hand ? (
+                            <HandCharacterSvg id={def.id} action="wave" time={0} prefix={`card-hc-${def.id}`} skin={def.skin} shirt={def.shirt} hair={def.hair} />
+                          ) : (
+                            <CharacterThumb def={def} />
+                          )}
+                        </svg>
+                      </div>
+                      <span className="mt-auto block truncate px-0.5 text-[9px] font-medium text-zinc-800 group-hover:text-black">{def.name} • Character</span>
+                    </button>
+                  );
+                })}
+              </div>
+              {CHARACTERS.every((def) => !`${def.name} ${def.hint} ${def.id}`.toLowerCase().includes(query)) && (
+                <p className="mt-4 text-center text-[10px] text-zinc-500">Koi character nahi mila.</p>
+              )}
+            </div>
+          )}
+
+          {panel === "animals" && (
+            <div className="p-3">
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="🔍 Search elephant, deer, snake..."
+                className="mb-2 w-full rounded-lg border border-line bg-[#0e0e13] px-2.5 py-2 text-[10px] text-zinc-200 outline-none focus:border-brand"
+              />
+              <p className="mb-2 text-[10px] text-zinc-500">{ANIMALS.length} pure SVG animals • video me bhi chalenge</p>
+              <div className="grid grid-cols-2 gap-2">
+                {ANIMALS.filter((def) => `${def.name} ${def.hint} ${def.id}`.toLowerCase().includes(query)).map((def) => (
+                  <button key={def.id} type="button" title={`${def.name} • Animal • Click to Add`} onClick={() => actions.addAnimal(def)} className="group flex h-[170px] flex-col rounded-lg border border-zinc-200 bg-white p-1 transition hover:border-brand hover:bg-brand/5">
+                    <div className="flex h-[110px] items-center justify-center overflow-visible rounded bg-[#F8FAFC]">
+                      <svg viewBox="0 0 260 180" className="h-[110px] w-full overflow-visible" preserveAspectRatio="xMidYMid meet">
+                        <AnimalSvg id={def.id} action={def.id === "snake" ? "slither" : "tailWag"} time={0} prefix={`card-an-${def.id}`} cssAnimate />
+                      </svg>
+                    </div>
+                    <span className="mt-1 block truncate px-0.5 text-[13px] font-bold text-zinc-900 group-hover:text-black">{def.name}</span>
+                    <span className="block truncate px-0.5 text-[11px] text-zinc-500">Animal • Click to Add</span>
                   </button>
                 ))}
               </div>
+              {ANIMALS.every((def) => !`${def.name} ${def.hint} ${def.id}`.toLowerCase().includes(query)) && (
+                <p className="mt-4 text-center text-[10px] text-zinc-500">Koi animal nahi mila.</p>
+              )}
             </div>
           )}
 
@@ -196,7 +251,7 @@ function LeftDockImpl({
 
           {panel === "json" && (
             <div className="p-3">
-              <p className="mb-2 text-[10px] leading-relaxed text-zinc-500">Paste project JSON. Scenes, characters, text aur objects auto ban jayenge.</p>
+              <p className="mb-2 text-[10px] leading-relaxed text-zinc-500">Paste project JSON. Scenes, characters, animals, text aur objects auto ban jayenge.</p>
               <textarea
                 value={actions.jsonText}
                 onChange={(e) => actions.setJsonText(e.target.value)}

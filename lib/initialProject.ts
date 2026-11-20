@@ -1,4 +1,6 @@
-import { CANVAS_SIZES, defaultBackground, makeCharacterLayer, makeFinanceLayer, makeTextLayer, uid } from "./presets";
+import {
+  CANVAS_SIZES, defaultBackground, findAnimal, makeAnimalLayer, makeCharacterLayer, makeFinanceLayer, makeTextLayer, uid,
+} from "./presets";
 import type { Background, Project, Scene, TextLayer } from "./types";
 
 function bg(color: string, from: string, to: string): Background {
@@ -36,6 +38,7 @@ export function createInitialProject(): Project {
   const c = CANVAS_SIZES[0];
   const ramesh = makeCharacterLayer({ id: "ramesh", name: "Ramesh", hint: "", skin: "#C68642", shirt: "#2563EB", hair: "#1C1917", accessory: "none", variant: 0 });
   const suresh = makeCharacterLayer({ id: "suresh", name: "Suresh", hint: "", skin: "#B45309", shirt: "#059669", hair: "#18181B", accessory: "moustache", variant: 1 });
+  const dog = makeAnimalLayer(findAnimal("dog"));
   const fd = makeFinanceLayer({ id: "fd-gold", label: "FD Certificate", hindi: "", kind: "fd", primary: "#FBBF24", secondary: "#B45309" });
 
   const scenes: Scene[] = [
@@ -46,10 +49,11 @@ export function createInitialProject(): Project {
       background: bg("#0B1020", "#0F172A", "#4C1D95"),
       layers: [
         { ...title("SMART SAVING", 14), animation: "pulse" },
-        { ...subtitle("बचत का नया तरीका • Ramesh & Suresh", 22) },
-        { ...fd, x: 50, y: 45, w: 34, h: 34 },
-        { ...ramesh, x: 27, y: 70, w: 34, h: 52, animation: "wave" },
-        { ...suresh, x: 73, y: 70, w: 34, h: 52, animation: "talk" },
+        { ...subtitle("बचत का नया तरीका • Ramesh + Dog", 22) },
+        { ...fd, x: 50, y: 42, w: 30, h: 30 },
+        { ...ramesh, x: 24, y: 70, w: 32, h: 49, animation: "wave" },
+        { ...dog, x: 78, y: 80, w: 34, h: 24, animation: "tailWag" },
+        { ...suresh, x: 66, y: 57, w: 24, h: 38, animation: "talk" },
       ],
     },
     {

@@ -1,3 +1,5 @@
+import { AnimalSvg } from "@/src/characters/Animals";
+import { HandCharacterSvg, isHandCharacter } from "@/src/characters/HandDesignedCharacters";
 import { financeKind, findCharacter } from "./presets";
 import { normalizeTextAnim, textMotion } from "./textAnimation";
 import type {
@@ -298,7 +300,33 @@ export function LayerArt({
       style={{ pointerEvents: layer.visible ? "auto" : "none" }}
     >
       {layer.kind === "text" && <TextArt layer={layer} W={W} H={H} time={time} boxW={boxW} boxH={boxH} sceneDuration={sceneDuration} prefix={prefix} />}
-      {layer.kind === "character" && <CharacterArt layer={layer} boxW={boxW} boxH={boxH} time={time} prefix={prefix} />}
+      {layer.kind === "character" && (isHandCharacter(layer.charId) ? (
+        <g transform={`scale(${Math.min(boxW / 200, boxH / 240)}) translate(-100 -120)`}>
+          <HandCharacterSvg
+            id={layer.charId}
+            action={layer.animation}
+            time={time}
+            animSpeed={layer.animSpeed}
+            prefix={prefix}
+            skin={layer.skin}
+            shirt={layer.shirt}
+            hair={layer.hair}
+          />
+        </g>
+      ) : (
+        <CharacterArt layer={layer} boxW={boxW} boxH={boxH} time={time} prefix={prefix} />
+      ))}
+      {layer.kind === "animal" && (
+        <g transform={`scale(${layer.flipX ? -1 : 1} ${1}) scale(${Math.min(boxW / 260, boxH / 180)}) translate(-130 -90)`}>
+          <AnimalSvg
+            id={layer.animalId}
+            action={layer.animation}
+            time={time}
+            animSpeed={layer.animSpeed}
+            prefix={prefix}
+          />
+        </g>
+      )}
       {layer.kind === "finance" && <FinanceArt layer={layer} boxW={boxW} boxH={boxH} time={time} prefix={prefix} />}
       {layer.kind === "image" && <ImageArt layer={layer} boxW={boxW} boxH={boxH} prefix={prefix} />}
       {layer.kind === "shape" && <ShapeArt layer={layer} boxW={boxW} boxH={boxH} prefix={prefix} />}
@@ -1054,7 +1082,7 @@ export function svgMarkup(scene: Scene, W: number, H: number, time: number, pref
         const par = layer.fit === "cover" ? "xMidYMid slice" : layer.fit === "contain" ? "xMidYMid meet" : "none";
         return `<g ${common}><defs><clipPath id="${prefix}-ic${index}"><rect x="${-boxW / 2}" y="${-boxH / 2}" width="${boxW}" height="${boxH}" rx="${radius}"/></clipPath></defs><g clip-path="url(#${prefix}-ic${index})"><image href="${layer.src}" x="${-boxW / 2}" y="${-boxH / 2}" width="${boxW}" height="${boxH}" preserveAspectRatio="${par}" transform="scale(${layer.crop})"/></g></g>`;
       }
-      const fallbackColor = "primary" in layer ? layer.primary : layer.shirt;
+      const fallbackColor = "primary" in layer ? layer.primary : "shirt" in layer ? layer.shirt : "#22C55E";
       return `<g ${common}><circle cx="0" cy="0" r="${Math.min(boxW, boxH) / 2}" fill="${fallbackColor}"/><text x="0" y="10" text-anchor="middle" font-size="${Math.min(boxW, boxH) / 2}" fill="#FFFFFF">${escape(layer.name)}</text></g>`;
     })
     .join("");

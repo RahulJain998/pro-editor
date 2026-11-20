@@ -30,6 +30,16 @@ export interface ScenesJsonCharacter {
   dialogue: string;
 }
 
+export interface ScenesJsonAnimal {
+  name: string;
+  x: number;
+  y: number;
+  size: number;
+  action: string;
+  flipX: boolean;
+  speed: number;
+}
+
 export interface ScenesJsonObject {
   id: string | number;
   name: string;
@@ -53,6 +63,7 @@ export interface ScenesJsonScene {
   };
   texts: ScenesJsonText[];
   characters: ScenesJsonCharacter[];
+  animals: ScenesJsonAnimal[];
   objects: ScenesJsonObject[];
 }
 
@@ -76,6 +87,7 @@ function jsonBackground(bg: Background): ScenesJsonScene["background"] {
 function jsonScene(scene: Scene, index: number, width: number): ScenesJsonScene {
   const texts: ScenesJsonText[] = [];
   const characters: ScenesJsonCharacter[] = [];
+  const animals: ScenesJsonAnimal[] = [];
   const objects: ScenesJsonObject[] = [];
 
   scene.layers.forEach((layer: Layer) => {
@@ -107,6 +119,16 @@ function jsonScene(scene: Scene, index: number, width: number): ScenesJsonScene 
         toX: layer.toX ?? Math.min(100, Math.round(layer.x + 10)),
         dialogue: layer.dialogue ?? "",
       });
+    } else if (layer.kind === "animal") {
+      animals.push({
+        name: layer.animalId,
+        x: layer.x,
+        y: layer.y,
+        size: Math.round((layer.w / 100) * width),
+        action: layer.animation,
+        flipX: layer.flipX,
+        speed: layer.animSpeed,
+      });
     } else {
       objects.push({
         id: layer.kind === "finance" ? layer.objectId : layer.id,
@@ -127,6 +149,7 @@ function jsonScene(scene: Scene, index: number, width: number): ScenesJsonScene 
     background: jsonBackground(scene.background),
     texts,
     characters,
+    animals,
     objects,
   };
 }
@@ -203,7 +226,7 @@ export function validateScenesJson(json: string): ScenesJson {
     if (!Number.isFinite(duration) || duration < 1 || duration > 60) {
       throw new Error(`Scene ${i + 1}: duration must be between 1 and 60`);
     }
-    for (const key of ["texts", "characters", "objects"]) {
+    for (const key of ["texts", "characters", "animals", "objects"]) {
       if (scene[key] !== undefined && !Array.isArray(scene[key])) {
         throw new Error(`Scene ${i + 1}: ${key} must be an array`);
       }

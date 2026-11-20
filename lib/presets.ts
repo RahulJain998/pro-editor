@@ -1,4 +1,17 @@
-import { DEFAULT_TEXT_ANIMATION, type Background, type CanvasSize, type CharacterLayer, type FinanceLayer, type TextLayer } from "./types";
+import { HAND_CHARACTERS } from "@/src/characters/HandDesignedCharacters";
+import { ANIMALS, findAnimal, type AnimalDef } from "@/src/characters/Animals";
+import {
+  DEFAULT_TEXT_ANIMATION,
+  type AnimalLayer,
+  type AnimationName,
+  type Background,
+  type CanvasSize,
+  type CharacterLayer,
+  type FinanceLayer,
+  type TextLayer,
+} from "./types";
+
+export { ANIMALS, findAnimal, type AnimalDef };
 
 export const CANVAS_SIZES: CanvasSize[] = [
   { id: "reels", name: "Reels / Shorts", short: "9:16", width: 1080, height: 1920, ratio: "9:16", icon: "phone" },
@@ -48,10 +61,9 @@ export interface CharacterDef {
   variant: number;
 }
 
-export const CHARACTERS: CharacterDef[] = [
+const ORIGINAL_CHARACTERS: CharacterDef[] = [
   { id: "ramesh", name: "Ramesh", hint: "रमेश • Young Hero", skin: "#C68642", shirt: "#2563EB", hair: "#1C1917", accessory: "none", variant: 0 },
   { id: "suresh", name: "Suresh", hint: "सुरेश • Moustache", skin: "#B45309", shirt: "#059669", hair: "#18181B", accessory: "moustache", variant: 1 },
-  { id: "dadaji", name: "Dadaji", hint: "दादाजी • Grandpa", skin: "#D6A066", shirt: "#F5F5F4", hair: "#E7E5E4", accessory: "glasses-beard", variant: 2 },
   { id: "neha", name: "Neha", hint: "नेहा • Kurti", skin: "#E8B48C", shirt: "#DB2777", hair: "#1C1917", accessory: "bindi", variant: 3 },
   { id: "priya", name: "Priya", hint: "प्रिया • Saree", skin: "#D9A06B", shirt: "#7C3AED", hair: "#18181B", accessory: "bindi", variant: 4 },
   { id: "vikram", name: "Vikram", hint: "विक्रम • Blazer", skin: "#A9622A", shirt: "#1F2937", hair: "#111111", accessory: "tie", variant: 5 },
@@ -62,6 +74,8 @@ export const CHARACTERS: CharacterDef[] = [
   { id: "kavita", name: "Kavita", hint: "कविता • Glasses", skin: "#E0AC85", shirt: "#0891B2", hair: "#18181B", accessory: "glasses-bun", variant: 10 },
   { id: "sharmaji", name: "Sharma Ji", hint: "शर्माजी • Kurta", skin: "#C68958", shirt: "#F59E0B", hair: "#D4D4D8", accessory: "moustache", variant: 11 },
 ];
+
+export const CHARACTERS: CharacterDef[] = [...ORIGINAL_CHARACTERS, ...HAND_CHARACTERS];
 
 export interface FinanceBase {
   id: string;
@@ -232,6 +246,11 @@ export function makeTextLayer(presetId: string, text?: string): TextLayer {
   };
 }
 
+const CHARACTER_ACTIONS: Record<string, AnimationName> = {
+  police: "wave", thief: "sneak", girl: "jump", topper: "wave", "doctor-girl": "walk",
+  "business-girl": "walk", "stylish-girl": "dance", "village-boy": "run", dadaji: "walk", women: "talk",
+};
+
 export function makeCharacterLayer(def: CharacterDef): CharacterLayer {
   return {
     id: uid("chr"),
@@ -245,13 +264,38 @@ export function makeCharacterLayer(def: CharacterDef): CharacterLayer {
     opacity: 100,
     visible: true,
     locked: false,
-    animation: "wave",
+    animation: CHARACTER_ACTIONS[def.id] ?? "wave",
     animSpeed: 1,
     charId: def.id,
     skin: def.skin,
     shirt: def.shirt,
     hair: def.hair,
     accessory: def.accessory,
+  };
+}
+
+const ANIMAL_ACTIONS: Record<string, AnimationName> = {
+  dog: "tailWag", cat: "blink", lion: "roar", buffalo: "headShake", cow: "moo",
+  snake: "slither", elephant: "walk", deer: "walk",
+};
+
+export function makeAnimalLayer(def: AnimalDef): AnimalLayer {
+  return {
+    id: uid("ani"),
+    name: def.name,
+    kind: "animal",
+    x: 28,
+    y: 35,
+    w: 44,
+    h: 31,
+    rot: 0,
+    opacity: 100,
+    visible: true,
+    locked: false,
+    animation: ANIMAL_ACTIONS[def.id] ?? "tailWag",
+    animSpeed: 1,
+    animalId: def.id,
+    flipX: false,
   };
 }
 

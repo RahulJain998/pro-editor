@@ -8,7 +8,17 @@ export type AnimationName =
   | "pulse"
   | "spin"
   | "wiggle"
-  | "blink";
+  | "blink"
+  | "run"
+  | "sneak"
+  | "dance"
+  | "tailWag"
+  | "roar"
+  | "sleep"
+  | "slither"
+  | "headShake"
+  | "moo"
+  | "bark";
 
 export type TextAnimName =
   | "none"
@@ -46,7 +56,7 @@ export const DEFAULT_TEXT_ANIMATION: TextAnimationConfig = {
   exit: "none",
 };
 
-export type LayerKind = "text" | "character" | "finance" | "image" | "shape";
+export type LayerKind = "text" | "character" | "animal" | "finance" | "image" | "shape";
 
 export interface LayerBase {
   id: string;
@@ -94,6 +104,12 @@ export interface CharacterLayer extends LayerBase {
   accessory: string;
 }
 
+export interface AnimalLayer extends LayerBase {
+  kind: "animal";
+  animalId: string;
+  flipX: boolean;
+}
+
 export interface FinanceLayer extends LayerBase {
   kind: "finance";
   objectId: string;
@@ -126,7 +142,7 @@ export interface ShapeLayer extends LayerBase {
   fillGradient: { enabled: boolean; from: string; to: string };
 }
 
-export type Layer = TextLayer | CharacterLayer | FinanceLayer | ImageLayer | ShapeLayer;
+export type Layer = TextLayer | CharacterLayer | AnimalLayer | FinanceLayer | ImageLayer | ShapeLayer;
 
 export type BackgroundType = "solid" | "gradient" | "image" | "pattern" | "video";
 
@@ -191,7 +207,7 @@ export interface Project {
   activeSceneId: string;
 }
 
-export type PanelId = "backgrounds" | "characters" | "finance" | "text" | "images" | "scenes" | "json";
+export type PanelId = "backgrounds" | "characters" | "animals" | "finance" | "text" | "images" | "scenes" | "json";
 
 export type RightMode = "canvas" | "background" | "layer";
 

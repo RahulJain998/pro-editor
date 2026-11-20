@@ -156,3 +156,24 @@ input[type="color"]::-webkit-color-swatch {
   animation: kineticA var(--ta-duration, 1s) ease-in-out both;
   animation-delay: var(--ta-stagger, 0s);
 }
+
+.tail-wag { animation: tailWag 0.5s infinite; transform-origin: top; transform-box: fill-box; }
+.tongue-flick { animation: tongue 1s infinite; transform-origin: top; transform-box: fill-box; }
+.roar { animation: roarA 1s infinite; transform-origin: center; transform-box: fill-box; }
+.slither { animation: slitherA 2s infinite; transform-origin: center; transform-box: fill-box; }
+@keyframes tailWag {
+  0%, 100% { transform: rotate(-12deg); }
+  50% { transform: rotate(14deg); }
+}
+@keyframes tongue {
+  0%, 100% { transform: scaleY(0.4) translateY(2px); }
+  50% { transform: scaleY(1) translateY(0); }
+}
+@keyframes roarA {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08, 1.28); }
+}
+@keyframes slitherA {
+  0%, 100% { transform: translateX(-3px) rotate(-2deg); }
+  50% { transform: translateX(3px) rotate(2deg); }
+}

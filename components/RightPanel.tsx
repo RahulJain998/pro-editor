@@ -4,8 +4,9 @@ import { memo, useState } from "react";
 import type { ChangeEvent, CSSProperties } from "react";
 import { CANVAS_SIZES, GRADIENTS } from "@/lib/presets";
 import { ENTRANCE_ANIMATIONS, EXIT_ANIMATIONS, normalizeTextAnim } from "@/lib/textAnimation";
+import { findAnimal } from "@/src/characters/Animals";
 import type {
-  AnimationName, Background, Layer, Project, RightMode, ShapeKind, TextAnimName, TextAnimationConfig, TextLayer,
+  AnimalLayer, AnimationName, Background, Layer, Project, RightMode, ShapeKind, TextAnimName, TextAnimationConfig, TextLayer,
 } from "@/lib/types";
 import {
   Button, ColorField, ColorGrid, FileInput, Icon, NumberField, PillTabs, Section,
@@ -23,6 +24,22 @@ const ANIMATIONS: { value: AnimationName; label: string }[] = [
   { value: "spin", label: "🔄 Spin / घूमना" },
   { value: "wiggle", label: "〰️ Wiggle" },
   { value: "blink", label: "👁️ Blink" },
+  { value: "run", label: "🏃 Run / भागना" },
+  { value: "sneak", label: "🥷 Sneak / चुपचाप" },
+  { value: "dance", label: "💃 Dance / नाचना" },
+];
+
+const ANIMAL_ACTIONS: { value: AnimationName; label: string }[] = [
+  { value: "walk", label: "🚶 Walk" },
+  { value: "jump", label: "🦘 Jump" },
+  { value: "roar", label: "😾 Roar" },
+  { value: "tailWag", label: "🐕 Tail Wag" },
+  { value: "sleep", label: "😴 Sleep" },
+  { value: "bark", label: "🐶 Bark" },
+  { value: "blink", label: "👁️ Blink" },
+  { value: "headShake", label: "🐃 Head Shake" },
+  { value: "moo", label: "🐄 Moo" },
+  { value: "slither", label: "🐍 Slither" },
 ];
 
 const TEXT_ANIMATIONS: { value: TextAnimName; label: string }[] = [
@@ -114,7 +131,7 @@ function RightPanelImpl(props: RightPanelProps) {
 }
 
 function kindIcon(kind: Layer["kind"]) {
-  return { text: "📝", character: "👤", finance: "💰", image: "🖼️", shape: "🔷" }[kind];
+  return { text: "📝", character: "👤", animal: "🐾", finance: "💰", image: "🖼️", shape: "🔷" }[kind];
 }
 
 function CanvasControls({ project, scene, onCanvas, onCustomSize, onScene, onMode }: RightPanelProps) {
@@ -363,6 +380,7 @@ function LayerControls({ layer, onLayer, onDeleteLayer, onDuplicateLayer, onPrev
           ]} onChange={(accessory) => patch({ accessory })} />
         </Section>
       )}
+      {layer.kind === "animal" && <AnimalControls layer={layer} patch={patch} onPreview={onPreviewAnimation} />}
       {layer.kind === "finance" && (
         <Section title="Finance Object" hint="Pure vector, 4K sharp">
           <ColorField label="Primary Color" value={layer.primary} onChange={(primary) => patch({ primary })} />
@@ -387,10 +405,12 @@ function LayerControls({ layer, onLayer, onDeleteLayer, onDuplicateLayer, onPrev
         </Section>
       )}
 
-      <Section title="Animation" hint="Preview me dekho">
-        <SelectField label="Animation" value={layer.animation} options={ANIMATIONS} onChange={(animation) => patch({ animation })} />
-        <Slider label="Speed" value={layer.animSpeed} min={0.2} max={3} step={0.1} suffix="x" onChange={(animSpeed) => patch({ animSpeed })} />
-      </Section>
+      {layer.kind !== "animal" && (
+        <Section title="Animation" hint="Preview me dekho">
+          <SelectField label="Animation" value={layer.animation} options={ANIMATIONS} onChange={(animation) => patch({ animation })} />
+          <Slider label="Speed" value={layer.animSpeed} min={0.2} max={3} step={0.1} suffix="x" onChange={(animSpeed) => patch({ animSpeed })} />
+        </Section>
+      )}
 
       <Section title="Layer Actions">
         <div className="flex gap-2">
@@ -399,6 +419,52 @@ function LayerControls({ layer, onLayer, onDeleteLayer, onDuplicateLayer, onPrev
         </div>
       </Section>
     </>
+  );
+}
+
+function AnimalControls({ layer, patch, onPreview }: { layer: AnimalLayer; patch: (p: Partial<Layer>) => void; onPreview: () => void }) {
+  const def = findAnimal(layer.animalId);
+  return (
+    <Section title="🐾 Animal Controls" hint="Action, Size, Flip, Speed">
+      <p className="mb-2 text-[10px] font-semibold text-brand2">{def.name} • {def.hint}</p>
+      <p className="mb-1 text-[10px] font-semibold text-zinc-400">Action</p>
+      <div className="mb-1 grid grid-cols-2 gap-1.5">
+        {ANIMAL_ACTIONS.slice(0, 5).map((item) => (
+          <button
+            key={item.value}
+            type="button"
+            onClick={() => { patch({ animation: item.value }); onPreview(); }}
+            className={`rounded-md border px-2 py-1.5 text-[10px] font-semibold transition ${
+              layer.animation === item.value
+                ? "border-brand bg-brand/20 text-white"
+                : "border-line bg-panel2 text-zinc-300 hover:border-brand"
+            }`}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+      <div className="mb-2 grid grid-cols-3 gap-1.5">
+        {ANIMAL_ACTIONS.slice(5).map((item) => (
+          <button
+            key={item.value}
+            type="button"
+            onClick={() => { patch({ animation: item.value }); onPreview(); }}
+            className={`rounded-md border px-1 py-1 text-[9px] font-semibold transition ${
+              layer.animation === item.value
+                ? "border-brand bg-brand/20 text-white"
+                : "border-line bg-panel2 text-zinc-400 hover:border-brand"
+            }`}
+          >
+            {item.label.replace(/^\S+\s/, "")}
+          </button>
+        ))}
+      </div>
+      <Slider label="Size" value={layer.w} min={12} max={90} suffix="%" onChange={(w) => patch({ w, h: Math.round(w * (180 / 260) * 10) / 10 })} />
+      <Toggle label="Flip" checked={layer.flipX} onChange={(flipX) => patch({ flipX })} />
+      <Slider label="Speed" value={layer.animSpeed} min={0.2} max={3} step={0.1} suffix="x" onChange={(animSpeed) => patch({ animSpeed })} />
+      <Button variant="outline" className="mt-2 w-full" onClick={onPreview}>▶️ Preview Action</Button>
+    </Section>
   );
 }
 

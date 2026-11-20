@@ -8,6 +8,7 @@ import { clamp } from "@/lib/utils";
 const PATHS: Record<string, ReactNode> = {
   backgrounds: <><rect x="3" y="3" width="18" height="18" rx="3" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></>,
   characters: <><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" /></>,
+  animals: <><circle cx="7.5" cy="9" r="1.7" /><circle cx="12" cy="6.8" r="1.7" /><circle cx="16.5" cy="9" r="1.7" /><path d="M12 11.5c-3.3 0-5.8 2.6-5.8 5.2 0 2 1.5 3.5 3.5 3.5 1 0 1.5-.5 2.3-.5s1.3.5 2.3.5c2 0 3.5-1.5 3.5-3.5 0-2.6-2.5-5.2-5.8-5.2z" /></>,
   finance: <><circle cx="12" cy="12" r="9" /><path d="M15 9.5c-.7-1.2-1.9-1.8-3.3-1.8-1.8 0-3 1-3 2.3 0 3.2 6.4 1.5 6.4 4.8 0 1.4-1.3 2.4-3.2 2.4-1.6 0-3-.7-3.7-2" /><path d="M12 5.5v13" /></>,
   text: <><path d="M4 6V4h16v2" /><path d="M12 4v16" /><path d="M8 20h8" /></>,
   images: <><rect x="3" y="4" width="18" height="16" rx="3" /><circle cx="8.5" cy="9" r="1.5" /><path d="M21 16l-5-5-9 9" /></>,

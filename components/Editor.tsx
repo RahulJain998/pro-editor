@@ -23,8 +23,8 @@ import {
   saveProject, writeAutosave, type SavedProject,
 } from "@/lib/projectStorage";
 import {
-  CANVAS_SIZES, makeCharacterLayer, makeFinanceLayer, makeTextLayer, uid,
-  type CharacterDef, type FinanceDef,
+  CANVAS_SIZES, makeAnimalLayer, makeCharacterLayer, makeFinanceLayer, makeTextLayer, uid,
+  type AnimalDef, type CharacterDef, type FinanceDef,
 } from "@/lib/presets";
 import type {
   Background, CanvasSize, Layer, PanelId, Project, RightMode, Scene, ShapeKind, ToastKind, ToastMessage,
@@ -169,6 +169,10 @@ export default function Editor() {
 
   const addCharacter = useCallback((def: CharacterDef) => {
     addLayer(makeCharacterLayer(def), `✅ ${def.name} Added`);
+  }, [addLayer]);
+
+  const addAnimal = useCallback((def: AnimalDef) => {
+    addLayer(makeAnimalLayer(def), `✅ ${def.name} added`);
   }, [addLayer]);
 
   const addFinance = useCallback((def: FinanceDef) => {
@@ -595,10 +599,10 @@ export default function Editor() {
     toast("📄 Sample JSON loaded", "info");
   }, [toast]);
   const leftActions = useMemo(() => ({
-    applyBackground, addCharacter, addFinance, addText, addImageFile, addSticker,
+    applyBackground, addCharacter, addAnimal, addFinance, addText, addImageFile, addSticker,
     selectScene, addScene, duplicateScene, deleteScene, jsonText, setJsonText,
     generateFromJson, loadSampleJson,
-  }), [applyBackground, addCharacter, addFinance, addText, addImageFile, addSticker,
+  }), [applyBackground, addCharacter, addAnimal, addFinance, addText, addImageFile, addSticker,
     selectScene, addScene, duplicateScene, deleteScene, jsonText, generateFromJson, loadSampleJson]);
   const handleBackgroundClick = useCallback(() => setRightMode("background"), []);
   const handleDownload = useCallback((kind: "png" | "svg" | "json" | "mp4" | "webm", opts: DownloadOptions) => {
